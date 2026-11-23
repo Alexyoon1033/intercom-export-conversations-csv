@@ -31,6 +31,7 @@ import { CheckpointDB } from '../src/core/checkpoint-db.js';
 import { FileStreamer } from '../src/core/file-streamer.js';
 import { SandboxDemoAdapter } from '../src/core/sandbox-demo.js';
 import { ExportEngine } from '../src/core/export-engine.js';
+import { LocalZipBuilder } from '../src/core/local-zip.js';
 
 test('Suite 1: HTML sanitization, Excel UTF-8 BOM, 32,000-char cell guard, and RFC 4180 CSV escaping', async (t) => {
   await t.test('htmlToCleanText converts <p>, <br>, <a>, <li>, and HTML entities cleanly', () => {
@@ -555,5 +556,137 @@ test('Suite 4: IndexedDB Checkpoint Save/Resume Integrity & 500-Chat Sandbox Str
     assert.equal(streamClosed, true);
     assert.ok(writtenDiskChunks.length >= 2);
     assert.ok(writtenDiskChunks[0].startsWith(UTF8_BOM));
+  });
+});
+
+test('Suite 5: v1.1.0 Upgrades — Search API Filtering, Deep Export Contact Enrichment, Redacted/Null Edge Cases & Zero-Dependency Local ZIP', async (t) => {
+  await t.test('Routes date/tag/state filters to POST /conversations/search and resolves tag name via GET /tags', async () => {
+    const capturedRequests = [];
+
+    const mockFetch = async (url, init) => {
+      capturedRequests.push({ url, method: init?.method || 'GET', body: init?.body ? JSON.parse(init.body) : null });
+
+      if (url === 'https://api.intercom.io/tags') {
+        return {
+          status: 200,
+          ok: true,
+          headers: new Map(),
+          json: async () => ({ data: [{ id: '98765', name: 'billing' }] })
+        };
+      }
+
+      if (url === 'https://api.intercom.io/conversations/search') {
+        return {
+          status: 200,
+          ok: true,
+          headers: new Map(),
+          json: async () => ({
+            total_count: 1,
+            conversations: [{ id: '777' }],
+            pages: {}
+          })
+        };
+      }
+
+      if (url.includes('/conversations/777')) {
+        return {
+          status: 200,
+          ok: true,
+          headers: new Map(),
+          json: async () => ({
+            id: '777',
+            state: 'closed',
+            created_at: 1760000000,
+            updated_at: 1760000900,
+            team_assignee_id: 'team_billing',
+            statistics: { time_to_admin_reply: 145, time_to_last_close: 900 },
+            contacts: { contacts: [{ id: 'cnt_99' }] },
+            custom_attributes: { ticket_tier: 'enterprise' },
+            source: { id: 's777', body: '<p>Refund inquiry</p>', author: null, redacted: false },
+            conversation_parts: {
+              conversation_parts: [
+                { id: 'p_redacted', part_type: 'comment', redacted: true, body: null, author: null, created_at: 1760000200 },
+                { id: 'p_bot', part_type: 'bot_intro', body: '<p>Automated greeting</p>', author: { type: 'bot' }, created_at: 1760000250 }
+              ]
+            }
+          })
+        };
+      }
+
+      if (url === 'https://api.intercom.io/contacts/cnt_99') {
+        return {
+          status: 200,
+          ok: true,
+          headers: new Map(),
+          json: async () => ({
+            id: 'cnt_99',
+            name: 'Dana Mercer',
+            email: 'dana@acme.io',
+            companies: { data: [{ id: 'co_1', name: 'Acme Corp' }] },
+            custom_attributes: { plan: 'enterprise_annual' }
+          })
+        };
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    };
+
+    const adapter = new IntercomAdapter({ token: 'dG9r_search', region: 'US', fetchFn: mockFetch });
+    const results = [];
+    for await (const item of adapter.exportStream({
+      filters: { startDate: '2026-10-01', endDate: '2026-10-31', tag: 'billing', state: 'closed' },
+      deepExport: true
+    })) {
+      results.push(item);
+    }
+
+    assert.equal(results.length, 1);
+    assert.equal(results[0].usedSearchApi, true);
+
+    const searchCall = capturedRequests.find((r) => r.url.endsWith('/conversations/search'));
+    assert.ok(searchCall);
+    assert.equal(searchCall.method, 'POST');
+    assert.equal(searchCall.body.query.operator, 'AND');
+    assert.ok(searchCall.body.query.value.some((c) => c.field === 'tag_ids' && c.value === '98765'));
+    assert.ok(searchCall.body.query.value.some((c) => c.field === 'state' && c.value === 'closed'));
+
+    // Verify Deep Export enrichment & defensive redacted/null author handling
+    const conv = results[0].conversation;
+    assert.equal(conv.customerName, 'Dana Mercer');
+    assert.deepEqual(conv.companies, ['Acme Corp']);
+    assert.equal(conv.customAttributes.plan, 'enterprise_annual');
+    assert.equal(conv.customAttributes.ticket_tier, 'enterprise');
+    assert.equal(conv.firstResponseSec, 145);
+    assert.ok(conv.messages.some((m) => m.bodyHtml === '[REDACTED MESSAGE]'));
+    assert.ok(conv.messages.some((m) => m.authorName === 'Intercom Bot'));
+  });
+
+  await t.test('SandboxDemoAdapter applies tag and state filters accurately', async () => {
+    const adapter = new SandboxDemoAdapter({ totalDemoCount: 100, simulateRateLimitPause: false, sleepFn: async () => {} });
+    const filtered = [];
+    for await (const item of adapter.exportStream({ filters: { tag: 'eu-vat', state: 'open' } })) {
+      filtered.push(item.conversation);
+    }
+    assert.ok(filtered.length > 0 && filtered.length < 100);
+    assert.ok(filtered.every((c) => c.state === 'open' && c.tags.includes('eu-vat')));
+  });
+
+  await t.test('LocalZipBuilder produces a valid PKZIP archive (PK\\x03\\x04 header & EOCD)', () => {
+    const zip = new LocalZipBuilder();
+    zip.addFile('transcripts.csv', UTF8_BOM + 'id,body\r\n1,"hello"\r\n');
+    zip.addFile('skipped_errors.json', '[]');
+    const bytes = zip.buildUint8Array();
+
+    // Verify PK\x03\x04 local header signature and PK\x05\x06 EOCD signature
+    assert.equal(bytes[0], 0x50);
+    assert.equal(bytes[1], 0x4b);
+    assert.equal(bytes[2], 0x03);
+    assert.equal(bytes[3], 0x04);
+    assert.ok(bytes.length > 100);
+    const eocdOffset = bytes.length - 22;
+    assert.equal(bytes[eocdOffset], 0x50);
+    assert.equal(bytes[eocdOffset + 1], 0x4b);
+    assert.equal(bytes[eocdOffset + 2], 0x05);
+    assert.equal(bytes[eocdOffset + 3], 0x06);
   });
 });

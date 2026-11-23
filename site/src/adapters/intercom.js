@@ -1,12 +1,11 @@
 /**
- * ChatVault Intercom API v2.11 Adapter
- * Features:
- * - Auto-detection across US (api.intercom.io), EU (api.eu.intercom.io), and AU (api.au.intercom.io)
- * - Cursor pagination (pages.next.starting_after) with per_page=150
- * - N+1 conversation detail fetching (up to 500 conversation_parts)
- * - Header-based Rate Limiter (X-RateLimit-Remaining < 20 -> wait until X-RateLimit-Reset)
- * - HTTP 429 Retry-After + Exponential Backoff
- * - Fault-tolerant loop: skips 404/403 deleted/restricted conversations and logs them in skipped_errors
+ * ChatVault Intercom API v2.11 Adapter (v1.1.0 — Production Hardened)
+ * New in v1.1.0:
+ * - Intercom Search API (POST /conversations/search) with Start Date, End Date, Tag ID/Name, and State filtering
+ * - Deep Export Enriched Data: Optional Contact/Company enrichment (GET /contacts/{id}) + Custom Attributes + Statistics (first response time, SLA)
+ * - Production edge-case hardening: redacted messages, bot_intro / quick_reply / custom_action_started, null authors, missing nested fields
+ * - Skipped errors export log (JSON) & Silent Continue fault-tolerant loop
+ * - Multi-region US / EU / AU auto-detection preserved (essential — DO NOT remove EU/AU!)
  */
 
 export const INTERCOM_REGIONS = [
@@ -22,9 +21,9 @@ export class IntercomAdapter {
    * @param {Object} options
    * @param {string} options.token - Intercom Access Token
    * @param {string} [options.region] - 'US' | 'EU' | 'AU' | 'AUTO'
-   * @param {Function} [options.fetchFn] - Custom fetch implementation (for unit tests / sandbox)
-   * @param {Function} [options.sleepFn] - Custom sleep implementation (ms) => Promise
-   * @param {Function} [options.onRateLimitWait] - Callback ({ remaining, resetAt, waitMs, reason }) => void
+   * @param {Function} [options.fetchFn]
+   * @param {Function} [options.sleepFn]
+   * @param {Function} [options.onRateLimitWait]
    */
   constructor(options = {}) {
     this.token = (options.token || '').trim();
@@ -35,6 +34,8 @@ export class IntercomAdapter {
     this.onRateLimitWait = options.onRateLimitWait || (() => {});
     this.rateLimitThreshold = typeof options.rateLimitThreshold === 'number' ? options.rateLimitThreshold : 20;
     this.maxRetries = typeof options.maxRetries === 'number' ? options.maxRetries : 4;
+    this._contactCache = new Map();
+    this._tagsCache = null;
   }
 
   _resolveBaseUrl(regionId) {
@@ -51,9 +52,6 @@ export class IntercomAdapter {
     };
   }
 
-  /**
-   * Auto-detect workspace region (US -> EU -> AU) and retrieve workspace metadata + total conversation count.
-   */
   async verifyAndDetectRegion() {
     if (!this.token) {
       throw new Error('Intercom Access Token is required.');
@@ -73,7 +71,6 @@ export class IntercomAdapter {
           this.region = candidate.id;
           this.baseUrl = candidate.baseUrl;
 
-          // Fetch total conversation count with per_page=1
           let totalCount = 0;
           try {
             const convRes = await this._rawRequest(
@@ -83,9 +80,9 @@ export class IntercomAdapter {
             );
             if (convRes.status === 200) {
               const convData = await convRes.json();
-              totalCount = typeof convData.total_count === 'number'
+              totalCount = typeof convData?.total_count === 'number'
                 ? convData.total_count
-                : (convData.conversations ? convData.conversations.length : 0);
+                : (Array.isArray(convData?.conversations) ? convData.conversations.length : 0);
             }
           } catch (_) {
             // Ignore count fallback failure
@@ -115,9 +112,6 @@ export class IntercomAdapter {
     throw lastError || new Error('Could not verify Intercom token across US, EU, or AU regions.');
   }
 
-  /**
-   * Executes an HTTP request with Rate-Limit header inspection and 429 exponential backoff.
-   */
   async _rawRequest(url, init = {}, handleRateLimit = true) {
     let attempt = 0;
 
@@ -182,7 +176,6 @@ export class IntercomAdapter {
 
         if (resetRaw !== null && resetRaw !== undefined && !Number.isNaN(Number(resetRaw))) {
           const resetVal = Number(resetRaw);
-          // Support both UNIX epoch seconds and delta seconds
           const resetUnixMs = resetVal > 1e9 ? resetVal * 1000 : Date.now() + resetVal * 1000;
           waitMs = Math.max(500, resetUnixMs - Date.now() + 200);
           resetAt = resetUnixMs;
@@ -201,13 +194,124 @@ export class IntercomAdapter {
   }
 
   /**
-   * Fetch a single page of conversation summaries.
-   * @param {Object} params
-   * @param {string|null} [params.startingAfter]
-   * @param {number} [params.perPage=150]
+   * Resolves a human-readable tag name (e.g., "billing") to its Intercom numeric tag ID via GET /tags.
+   * If input is already numeric, returns it directly.
    */
-  async listConversationsPage({ startingAfter = null, perPage = 150 } = {}) {
-    const query = new URLSearchParams({ per_page: String(perPage) });
+  async resolveTagId(tagInput) {
+    const cleaned = String(tagInput || '').trim();
+    if (!cleaned) return null;
+    if (/^\d+$/.test(cleaned)) return cleaned;
+
+    if (!this._tagsCache) {
+      try {
+        const res = await this._rawRequest(`${this.baseUrl}/tags`, { method: 'GET' }, true);
+        if (res.ok) {
+          const data = await res.json();
+          this._tagsCache = Array.isArray(data?.data) ? data.data : [];
+        } else {
+          this._tagsCache = [];
+        }
+      } catch (_) {
+        this._tagsCache = [];
+      }
+    }
+
+    const found = this._tagsCache.find(
+      (t) => String(t?.name || '').toLowerCase() === cleaned.toLowerCase()
+    );
+    return found?.id ? String(found.id) : cleaned;
+  }
+
+  /**
+   * Builds an Intercom v2.11 Search API query object from user-friendly filters.
+   * @param {Object} filters
+   * @param {string} [filters.startDate] - YYYY-MM-DD (inclusive)
+   * @param {string} [filters.endDate] - YYYY-MM-DD (inclusive end-of-day)
+   * @param {string} [filters.tagId] - Resolved tag ID
+   * @param {string} [filters.state] - 'open' | 'closed' | 'snoozed' | ''
+   */
+  buildSearchQuery(filters = {}) {
+    const conditions = [];
+
+    if (filters.startDate) {
+      const startEpoch = Math.floor(Date.parse(`${filters.startDate}T00:00:00Z`) / 1000);
+      if (!Number.isNaN(startEpoch)) {
+        conditions.push({ field: 'created_at', operator: '>=', value: startEpoch });
+      }
+    }
+
+    if (filters.endDate) {
+      const endEpoch = Math.floor(Date.parse(`${filters.endDate}T23:59:59Z`) / 1000);
+      if (!Number.isNaN(endEpoch)) {
+        conditions.push({ field: 'created_at', operator: '<=', value: endEpoch });
+      }
+    }
+
+    if (filters.tagId) {
+      conditions.push({ field: 'tag_ids', operator: '=', value: String(filters.tagId) });
+    }
+
+    if (filters.state && ['open', 'closed', 'snoozed'].includes(filters.state)) {
+      conditions.push({ field: 'state', operator: '=', value: filters.state });
+    }
+
+    if (conditions.length === 0) return null;
+    if (conditions.length === 1) return conditions[0];
+    return { operator: 'AND', value: conditions };
+  }
+
+  hasActiveFilters(filters = {}) {
+    return Boolean(
+      (filters.startDate && filters.startDate.trim()) ||
+      (filters.endDate && filters.endDate.trim()) ||
+      (filters.tag && filters.tag.trim()) ||
+      (filters.state && filters.state.trim())
+    );
+  }
+
+  /**
+   * Lists a page of conversations using either GET /conversations (no filters) or POST /conversations/search (with filters).
+   */
+  async listConversationsPage({ startingAfter = null, perPage = 150, filters = {} } = {}) {
+    if (this.hasActiveFilters(filters)) {
+      const resolvedTagId = filters.tag ? await this.resolveTagId(filters.tag) : null;
+      const queryObj = this.buildSearchQuery({
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        tagId: resolvedTagId,
+        state: filters.state
+      });
+
+      const payload = {
+        query: queryObj,
+        pagination: {
+          per_page: Math.min(perPage, 150)
+        }
+      };
+      if (startingAfter) {
+        payload.pagination.starting_after = startingAfter;
+      }
+
+      const url = `${this.baseUrl}/conversations/search`;
+      const res = await this._rawRequest(
+        url,
+        { method: 'POST', body: JSON.stringify(payload) },
+        true
+      );
+
+      if (!res.ok) {
+        throw new Error(`Failed to search conversations: HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const conversations = Array.isArray(data?.conversations) ? data.conversations : [];
+      const nextCursor = data?.pages?.next?.starting_after || null;
+      const totalCount = typeof data?.total_count === 'number' ? data.total_count : conversations.length;
+
+      return { conversations, nextCursor, totalCount, usedSearchApi: true };
+    }
+
+    const query = new URLSearchParams({ per_page: String(Math.min(perPage, 150)) });
     if (startingAfter) {
       query.set('starting_after', startingAfter);
     }
@@ -220,22 +324,54 @@ export class IntercomAdapter {
     }
 
     const data = await res.json();
-    const conversations = Array.isArray(data.conversations) ? data.conversations : [];
+    const conversations = Array.isArray(data?.conversations) ? data.conversations : [];
     const nextCursor = data?.pages?.next?.starting_after || null;
-    const totalCount = typeof data.total_count === 'number' ? data.total_count : conversations.length;
+    const totalCount = typeof data?.total_count === 'number' ? data.total_count : conversations.length;
 
-    return {
-      conversations,
-      nextCursor,
-      totalCount
-    };
+    return { conversations, nextCursor, totalCount, usedSearchApi: false };
   }
 
   /**
-   * Fetch full conversation detail by ID (GET /conversations/{id}).
-   * Returns { skipped: true, status, id, reason } on 404 or 403 so the batch loop never halts.
+   * Optional Deep Export contact enrichment via GET /contacts/{id} with local memoization cache.
    */
-  async fetchConversationDetail(conversationId) {
+  async fetchContactProfile(contactId) {
+    const idStr = String(contactId || '').trim();
+    if (!idStr) return null;
+    if (this._contactCache.has(idStr)) {
+      return this._contactCache.get(idStr);
+    }
+
+    try {
+      const res = await this._rawRequest(`${this.baseUrl}/contacts/${encodeURIComponent(idStr)}`, { method: 'GET' }, true);
+      if (!res.ok) {
+        this._contactCache.set(idStr, null);
+        return null;
+      }
+      const c = await res.json();
+      const companyNames = Array.isArray(c?.companies?.data)
+        ? c.companies.data.map((co) => co?.name || co?.id).filter(Boolean)
+        : [];
+      const enriched = {
+        id: idStr,
+        name: c?.name || '',
+        email: c?.email || '',
+        role: c?.role || '',
+        companies: companyNames,
+        customAttributes: c?.custom_attributes && typeof c.custom_attributes === 'object' ? c.custom_attributes : {}
+      };
+      this._contactCache.set(idStr, enriched);
+      return enriched;
+    } catch (_) {
+      this._contactCache.set(idStr, null);
+      return null;
+    }
+  }
+
+  /**
+   * Fetches full conversation detail by ID with optional Deep Export contact/company enrichment.
+   * Returns { skipped: true } on 404/403 so batch runs never halt.
+   */
+  async fetchConversationDetail(conversationId, { deepExport = false } = {}) {
     const url = `${this.baseUrl}/conversations/${encodeURIComponent(conversationId)}?display_as=html`;
     const res = await this._rawRequest(url, { method: 'GET' }, true);
 
@@ -253,82 +389,142 @@ export class IntercomAdapter {
     }
 
     const raw = await res.json();
+    let contactProfile = null;
+    if (deepExport) {
+      const primaryContactId = raw?.contacts?.contacts?.[0]?.id || raw?.source?.author?.id;
+      if (primaryContactId) {
+        contactProfile = await this.fetchContactProfile(primaryContactId);
+      }
+    }
+
     return {
       skipped: false,
-      conversation: this.normalizeConversation(raw)
+      conversation: this.normalizeConversation(raw, contactProfile)
     };
   }
 
   /**
-   * Normalizes an Intercom v2.11 conversation object into ChatVault's platform-agnostic schema.
+   * Hardened normalizer resistant to real-world Intercom edge cases:
+   * - redacted messages (part.redacted === true or source.redacted === true)
+   * - bot_intro, quick_reply, custom_action_started, null/missing author objects
+   * - custom_attributes, companies, team_assignee_id, and SLA statistics
    */
-  normalizeConversation(raw) {
-    const id = String(raw.id || '');
-    const title = raw.title || raw.source?.subject || '';
-    const state = raw.state || 'unknown';
-    const priority = raw.priority || 'not_priority';
-    const createdAt = raw.created_at ? new Date(raw.created_at * 1000).toISOString() : '';
-    const updatedAt = raw.updated_at ? new Date(raw.updated_at * 1000).toISOString() : '';
+  normalizeConversation(raw = {}, contactProfile = null) {
+    const safeRaw = raw && typeof raw === 'object' ? raw : {};
+    const id = String(safeRaw?.id ?? 'unknown');
+    const title = safeRaw?.title || safeRaw?.source?.subject || '';
+    const state = safeRaw?.state || 'unknown';
+    const priority = safeRaw?.priority || 'not_priority';
+    const createdAt = typeof safeRaw?.created_at === 'number'
+      ? new Date(safeRaw.created_at * 1000).toISOString()
+      : '';
+    const updatedAt = typeof safeRaw?.updated_at === 'number'
+      ? new Date(safeRaw.updated_at * 1000).toISOString()
+      : '';
 
-    const tags = Array.isArray(raw.tags?.tags)
-      ? raw.tags.tags.map((t) => t.name).filter(Boolean)
+    const tags = Array.isArray(safeRaw?.tags?.tags)
+      ? safeRaw.tags.tags.map((t) => t?.name).filter(Boolean)
       : [];
 
-    const assignee = raw.admin_assignee_id
-      ? String(raw.admin_assignee_id)
-      : (raw.teammate?.name || raw.assignee?.name || raw.assignee?.email || '');
+    const assignee = safeRaw?.admin_assignee_id
+      ? String(safeRaw.admin_assignee_id)
+      : (safeRaw?.teammate?.name || safeRaw?.assignee?.name || safeRaw?.assignee?.email || 'Unassigned');
 
-    const contactList = Array.isArray(raw.contacts?.contacts) ? raw.contacts.contacts : [];
-    const primaryContact = contactList[0] || raw.source?.author || {};
-    const customerName = primaryContact.name || '';
-    const customerEmail = primaryContact.email || '';
-    const customerId = primaryContact.id ? String(primaryContact.id) : '';
+    const teamAssignee = safeRaw?.team_assignee_id ? String(safeRaw.team_assignee_id) : '';
+
+    const contactList = Array.isArray(safeRaw?.contacts?.contacts) ? safeRaw.contacts.contacts : [];
+    const primaryContact = contactList[0] || safeRaw?.source?.author || {};
+    const customerName = contactProfile?.name || primaryContact?.name || 'Unknown';
+    const customerEmail = contactProfile?.email || primaryContact?.email || '';
+    const customerId = primaryContact?.id ? String(primaryContact.id) : (contactProfile?.id || '');
+
+    const companies = contactProfile?.companies?.length
+      ? contactProfile.companies
+      : (Array.isArray(safeRaw?.companies?.companies)
+          ? safeRaw.companies.companies.map((c) => c?.name || c?.id).filter(Boolean)
+          : []);
+
+    const convCustomAttrs = safeRaw?.custom_attributes && typeof safeRaw.custom_attributes === 'object'
+      ? safeRaw.custom_attributes
+      : {};
+    const mergedCustomAttributes = {
+      ...(contactProfile?.customAttributes || {}),
+      ...convCustomAttrs
+    };
+
+    const firstResponseSec = safeRaw?.statistics?.time_to_admin_reply ?? '';
+    const timeToCloseSec = safeRaw?.statistics?.time_to_last_close ?? '';
 
     const messages = [];
 
-    // Initial source message
-    if (raw.source) {
-      const srcAttachments = Array.isArray(raw.source.attachments)
-        ? raw.source.attachments.map((a) => a.url || a.name).filter(Boolean)
+    // Initial source message (defensive against null author / redacted body)
+    if (safeRaw?.source && typeof safeRaw.source === 'object') {
+      const srcAttachments = Array.isArray(safeRaw.source?.attachments)
+        ? safeRaw.source.attachments.map((a) => a?.url || a?.name).filter(Boolean)
         : [];
+      const srcAuthor = safeRaw.source?.author || {};
+      const srcBody = safeRaw.source?.redacted
+        ? '[REDACTED BY INTERCOM]'
+        : (typeof safeRaw.source?.body === 'string' ? safeRaw.source.body : '');
+
       messages.push({
-        partId: String(raw.source.id || `${id}_source`),
-        partType: raw.source.type || 'conversation_initiation',
-        authorType: raw.source.author?.type || 'user',
-        authorName: raw.source.author?.name || customerName || 'Customer',
-        authorEmail: raw.source.author?.email || customerEmail || '',
-        bodyHtml: raw.source.body || '',
+        partId: String(safeRaw.source?.id ?? `${id}_source`),
+        partType: String(safeRaw.source?.type || 'conversation_initiation'),
+        authorType: String(srcAuthor?.type || 'user'),
+        authorName: String(srcAuthor?.name || customerName || 'Unknown'),
+        authorEmail: String(srcAuthor?.email || customerEmail || ''),
+        bodyHtml: srcBody,
         createdAt,
         isInternalNote: false,
         attachments: srcAttachments
       });
     }
 
-    // Conversation parts (up to 500 per Intercom v2.11 API)
-    const rawParts = Array.isArray(raw.conversation_parts?.conversation_parts)
-      ? raw.conversation_parts.conversation_parts.slice(0, 500)
+    // Conversation parts (up to 500 per Intercom v2.11 API, resilient against bot/redacted/null authors)
+    const rawParts = Array.isArray(safeRaw?.conversation_parts?.conversation_parts)
+      ? safeRaw.conversation_parts.conversation_parts.slice(0, 500)
       : [];
 
     for (const part of rawParts) {
-      const attachments = Array.isArray(part.attachments)
-        ? part.attachments.map((a) => a.url || a.name).filter(Boolean)
+      if (!part || typeof part !== 'object') continue;
+      const attachments = Array.isArray(part?.attachments)
+        ? part.attachments.map((a) => a?.url || a?.name).filter(Boolean)
         : [];
-      const partType = part.part_type || 'comment';
+      const partType = String(part?.part_type || 'comment');
       const isInternalNote = partType === 'note';
+      const isRedacted = Boolean(part?.redacted);
 
-      // Skip empty assignment/state notification parts with no body or attachments
-      if (!part.body && attachments.length === 0 && partType !== 'comment' && partType !== 'note') {
+      let bodyHtml = '';
+      if (isRedacted) {
+        bodyHtml = '[REDACTED MESSAGE]';
+      } else if (typeof part?.body === 'string') {
+        bodyHtml = part.body;
+      } else if (part?.body && typeof part.body === 'object') {
+        bodyHtml = JSON.stringify(part.body);
+      }
+
+      // Skip purely empty state-change notifications unless they are comments, notes, redacted, or have attachments
+      if (!bodyHtml && attachments.length === 0 && partType !== 'comment' && partType !== 'note' && !isRedacted) {
         continue;
       }
 
+      const authorObj = part?.author || {};
+      const authorType = String(authorObj?.type || 'unknown');
+      const authorName = String(
+        authorObj?.name ||
+        (authorType === 'bot' ? 'Intercom Bot' : authorType === 'admin' ? 'Teammate' : 'Unknown')
+      );
+
       messages.push({
-        partId: String(part.id || ''),
+        partId: String(part?.id ?? ''),
         partType,
-        authorType: part.author?.type || 'admin',
-        authorName: part.author?.name || (part.author?.type === 'admin' ? 'Teammate' : 'Customer'),
-        authorEmail: part.author?.email || '',
-        bodyHtml: part.body || '',
-        createdAt: part.created_at ? new Date(part.created_at * 1000).toISOString() : updatedAt,
+        authorType,
+        authorName,
+        authorEmail: String(authorObj?.email || ''),
+        bodyHtml,
+        createdAt: typeof part?.created_at === 'number'
+          ? new Date(part.created_at * 1000).toISOString()
+          : updatedAt,
         isInternalNote,
         attachments
       });
@@ -345,27 +541,24 @@ export class IntercomAdapter {
       updatedAt,
       tags,
       assignee,
+      teamAssignee,
       customerId,
       customerName,
       customerEmail,
-      rating: raw.conversation_rating?.rating ?? '',
-      ratingRemark: raw.conversation_rating?.remark ?? '',
-      totalPartsCount: raw.conversation_parts?.total_count ?? messages.length,
+      companies,
+      customAttributes: mergedCustomAttributes,
+      firstResponseSec,
+      timeToCloseSec,
+      rating: safeRaw?.conversation_rating?.rating ?? '',
+      ratingRemark: safeRaw?.conversation_rating?.remark ?? '',
+      totalPartsCount: safeRaw?.conversation_parts?.total_count ?? messages.length,
       messages
     };
   }
 
   /**
-   * High-level generator that yields normalized conversations with checkpoint support,
-   * hard cap (e.g., 50 in free tier), and fault-tolerant 404/403 skipping.
-   *
-   * @param {Object} options
-   * @param {string|null} [options.startingAfter] - Resume cursor
-   * @param {Set<string>|Array<string>} [options.completedIds] - Already exported conversation IDs
-   * @param {number} [options.maxConversations=Infinity] - Hard cap (50 for Free mode, Infinity for Pro)
-   * @param {number} [options.perPage=150]
-   * @param {AbortSignal} [options.signal]
-   * @param {Function} [options.onProgress]
+   * High-level stream generator with Search API filters, Deep Export enrichment,
+   * checkpoint resume, hard cap, and fault-tolerant 404/403 skipping.
    */
   async *exportStream(options = {}) {
     let cursor = options.startingAfter || null;
@@ -373,18 +566,19 @@ export class IntercomAdapter {
     const maxConversations = typeof options.maxConversations === 'number' ? options.maxConversations : Infinity;
     const perPage = options.perPage || 150;
     const signal = options.signal || null;
+    const filters = options.filters || {};
+    const deepExport = Boolean(options.deepExport);
 
     let exportedCount = completedSet.size;
     const skippedErrors = [];
 
     while (exportedCount < maxConversations) {
-      if (signal?.aborted) {
-        break;
-      }
+      if (signal?.aborted) break;
 
       const page = await this.listConversationsPage({
         startingAfter: cursor,
-        perPage: Math.min(perPage, 150)
+        perPage: Math.min(perPage, 150),
+        filters
       });
 
       if (!page.conversations || page.conversations.length === 0) {
@@ -392,42 +586,47 @@ export class IntercomAdapter {
       }
 
       for (const summary of page.conversations) {
-        if (signal?.aborted || exportedCount >= maxConversations) {
-          break;
-        }
+        if (signal?.aborted || exportedCount >= maxConversations) break;
 
-        const convId = String(summary.id);
-        if (completedSet.has(convId)) {
-          continue;
-        }
+        const convId = String(summary?.id ?? '');
+        if (!convId || completedSet.has(convId)) continue;
 
-        const detailResult = await this.fetchConversationDetail(convId);
-        if (detailResult.skipped) {
+        try {
+          const detailResult = await this.fetchConversationDetail(convId, { deepExport });
+          if (detailResult.skipped) {
+            skippedErrors.push({
+              id: detailResult.id,
+              status: detailResult.status,
+              reason: detailResult.reason,
+              timestamp: new Date().toISOString()
+            });
+            continue;
+          }
+
+          completedSet.add(convId);
+          exportedCount++;
+
+          yield {
+            conversation: detailResult.conversation,
+            cursor,
+            nextCursor: page.nextCursor,
+            exportedCount,
+            totalCount: page.totalCount,
+            usedSearchApi: page.usedSearchApi,
+            skippedErrors: [...skippedErrors]
+          };
+        } catch (err) {
+          // Silent continue on unexpected per-conversation malformed payload/network blip
           skippedErrors.push({
-            id: detailResult.id,
-            status: detailResult.status,
-            reason: detailResult.reason,
+            id: convId,
+            status: 'ERROR',
+            reason: err?.message || 'Unexpected conversation fetch error',
             timestamp: new Date().toISOString()
           });
-          continue;
         }
-
-        completedSet.add(convId);
-        exportedCount++;
-
-        yield {
-          conversation: detailResult.conversation,
-          cursor,
-          nextCursor: page.nextCursor,
-          exportedCount,
-          totalCount: page.totalCount,
-          skippedErrors: [...skippedErrors]
-        };
       }
 
-      if (!page.nextCursor || exportedCount >= maxConversations) {
-        break;
-      }
+      if (!page.nextCursor || exportedCount >= maxConversations) break;
       cursor = page.nextCursor;
     }
   }

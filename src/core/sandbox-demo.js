@@ -139,9 +139,18 @@ export function generateSyntheticConversation(index) {
     updatedAt: closingIso,
     tags: [...topic.tags, `batch-${Math.ceil(index / 50)}`],
     assignee: teammate.name,
+    teamAssignee: index % 2 === 0 ? 'team_tier2_eng' : 'team_billing_ops',
     customerId: `usr_${70000 + index}`,
     customerName: `${customerName} (${company.name})`,
     customerEmail,
+    companies: [company.name],
+    customAttributes: {
+      plan: index % 3 === 0 ? 'enterprise' : 'growth',
+      arr_usd: index % 3 === 0 ? 48000 : 12000,
+      account_region: index % 3 === 0 ? 'EU' : 'US'
+    },
+    firstResponseSec: 180 + (index % 12) * 45,
+    timeToCloseSec: 1400 + (index % 9) * 180,
     rating: (index % 5 === 0) ? 4 : 5,
     ratingRemark: 'Fast, technical, and accurate resolution!',
     totalPartsCount: 5,
@@ -236,21 +245,40 @@ export class SandboxDemoAdapter {
       ? Math.min(options.maxConversations, this.totalDemoCount)
       : this.totalDemoCount;
     const signal = options.signal || null;
+    const filters = options.filters || {};
+
+    const startMs = filters.startDate ? Date.parse(`${filters.startDate}T00:00:00Z`) : null;
+    const endMs = filters.endDate ? Date.parse(`${filters.endDate}T23:59:59Z`) : null;
+    const tagFilter = filters.tag ? String(filters.tag).trim().toLowerCase() : '';
+    const stateFilter = filters.state ? String(filters.state).trim().toLowerCase() : '';
+
+    // Pre-filter matching sandbox records so totalCount reflects the exact filtered set
+    const candidates = [];
+    for (let i = 1; i <= this.totalDemoCount; i++) {
+      const conv = generateSyntheticConversation(i);
+      const createdMs = Date.parse(conv.createdAt);
+      if (startMs && !Number.isNaN(startMs) && createdMs < startMs) continue;
+      if (endMs && !Number.isNaN(endMs) && createdMs > endMs) continue;
+      if (tagFilter && !conv.tags.some((t) => t.toLowerCase().includes(tagFilter))) continue;
+      if (stateFilter && conv.state.toLowerCase() !== stateFilter) continue;
+      candidates.push(conv);
+    }
 
     let exportedCount = completedSet.size;
     const skippedErrors = [];
+    const totalFiltered = candidates.length;
 
-    for (let i = 1; i <= this.totalDemoCount; i++) {
+    for (let idx = 0; idx < candidates.length; idx++) {
       if (signal?.aborted || exportedCount >= maxConversations) {
         break;
       }
 
-      const conv = generateSyntheticConversation(i);
+      const conv = candidates[idx];
       if (completedSet.has(conv.id)) {
         continue;
       }
 
-      // Simulate a brief rate-limit throttle notification at conversation #150 and #350
+      const i = idx + 1;
       if (this.simulateRateLimitPause && (i === 150 || i === 350)) {
         this.onRateLimitWait({
           remaining: 14,
@@ -269,9 +297,10 @@ export class SandboxDemoAdapter {
       yield {
         conversation: conv,
         cursor: `sandbox_cursor_${i - 1}`,
-        nextCursor: i < this.totalDemoCount ? `sandbox_cursor_${i}` : null,
+        nextCursor: i < totalFiltered ? `sandbox_cursor_${i}` : null,
         exportedCount,
-        totalCount: this.totalDemoCount,
+        totalCount: totalFiltered,
+        usedSearchApi: Boolean(startMs || endMs || tagFilter || stateFilter),
         skippedErrors
       };
     }

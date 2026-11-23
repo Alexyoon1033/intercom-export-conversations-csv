@@ -64,19 +64,19 @@
           </div>
 
           <div id="tokenGuideBox" class="token-guide-box">
-            <h3>Create a read-only Intercom access token</h3>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+              <h3 style="margin:0;">Create a read-only Intercom access token (60s)</h3>
+              <a href="https://app.intercom.com/a/apps/_/developer-hub" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs">Open Intercom Developer Hub &rarr;</a>
+            </div>
             <ol class="token-steps">
               <li>
-                <strong>Step 1.</strong> Open <a href="https://app.intercom.com/a/apps/_/developer-hub" target="_blank" rel="noopener noreferrer">Intercom Developer Hub</a> and click <strong>New app</strong> (Internal integration).
+                <strong>Step 1.</strong> Click <strong>Open Intercom Developer Hub</strong> above and choose <strong>New app</strong> (Internal integration).
               </li>
               <li>
-                <strong>Step 2.</strong> Under <strong>Authentication &rarr; Permissions</strong>, enable <strong>Read conversations</strong> and <strong>Read admins/contacts</strong>. Leave all write permissions unchecked.
+                <strong>Step 2.</strong> Under <strong>Authentication &rarr; Permissions</strong>, enable <strong>Read conversations</strong>, <strong>Read contacts</strong>, and <strong>Read admins</strong>. Leave all write permissions unchecked.
               </li>
               <li>
-                <strong>Step 3.</strong> Copy the generated <strong>Access Token</strong> from the Authentication tab.
-              </li>
-              <li>
-                <strong>Step 4.</strong> Paste the token below and click <strong>Verify token</strong>. The token stays in your local browser memory.
+                <strong>Step 3.</strong> Copy the generated <strong>Access Token</strong> (<code>dG9r...</code>), paste below, and click <strong>Verify token</strong>.
               </li>
             </ol>
           </div>
@@ -109,7 +109,34 @@
 
         <section class="card">
           <div class="card-header">
-            <h2>2. Output format and disk stream</h2>
+            <h2>2. Search filters, output format, and disk stream</h2>
+          </div>
+
+          <div class="form-row-2" style="grid-template-columns: 1fr 1fr;">
+            <div class="form-group">
+              <label for="filterStartDate">Start date (optional, Search API)</label>
+              <input type="date" id="filterStartDate">
+            </div>
+            <div class="form-group">
+              <label for="filterEndDate">End date (optional, Search API)</label>
+              <input type="date" id="filterEndDate">
+            </div>
+          </div>
+
+          <div class="form-row-2" style="grid-template-columns: 1fr 1fr;">
+            <div class="form-group">
+              <label for="filterTagInput">Tag name or Tag ID (optional)</label>
+              <input type="text" id="filterTagInput" placeholder="e.g. billing, sso-saml, eu-vat">
+            </div>
+            <div class="form-group">
+              <label for="filterStateSelect">Conversation state</label>
+              <select id="filterStateSelect">
+                <option value="" selected>All states (open, closed, snoozed)</option>
+                <option value="closed">Closed only</option>
+                <option value="open">Open only</option>
+                <option value="snoozed">Snoozed only</option>
+              </select>
+            </div>
           </div>
 
           <div class="form-group">
@@ -131,8 +158,16 @@
 
           <div class="form-group checkbox-group">
             <label class="checkbox-label">
+              <input type="checkbox" id="deepExportToggle">
+              <span><strong>Deep Export — Enrich contacts, companies &amp; custom attributes</strong> (calls <code>GET /contacts/{id}</code> with local cache; slower on large archives)</span>
+            </label>
+            <label class="checkbox-label" style="margin-top:8px;">
+              <input type="checkbox" id="bundleZipToggle">
+              <span><strong>Package ZIP bundle (manifest + attachments index + skipped_errors.json)</strong> — zero external libraries, built locally in browser</span>
+            </label>
+            <label class="checkbox-label" style="margin-top:8px;">
               <input type="checkbox" id="preferDiskStreamToggle" checked>
-              <span><strong>Stream directly to disk (<code>FileSystemWritableFileStream</code>)</strong>. Flushes every 50 conversations to disk so browser memory stays below 30 MB on 100,000+ conversations. Uncheck to save directly to your default downloads folder.</span>
+              <span><strong>Stream directly to disk (<code>FileSystemWritableFileStream</code>)</strong>. Flushes every 50 conversations so RAM stays under 30 MB on 100,000+ conversations.</span>
             </label>
           </div>
 
@@ -142,6 +177,11 @@
             </button>
             <button id="stopExportBtn" class="btn btn-danger btn-lg hidden" type="button">
               Pause and save checkpoint
+            </button>
+          </div>
+          <div id="skippedErrorsDownloadWrap" class="hidden" style="margin-top:4px;">
+            <button id="downloadSkippedJsonBtn" class="btn btn-ghost btn-sm" type="button" style="width:100%;">
+              Download skipped_errors.json audit log
             </button>
           </div>
         </section>

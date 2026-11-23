@@ -394,8 +394,9 @@
       </a>
       <nav class="nav-links">
         <a href="/workstation">Web workstation &amp; 500-chat sandbox</a>
-        <a href="/guide-missing-message-text">API v2.11 technical notes</a>
-        <a href="/privacy">Privacy policy</a>
+        <a href="/security-factsheet">Security factsheet (PDF)</a>
+        <a href="/guide-missing-message-text">API v2.11 guide</a>
+        <a href="/privacy">Privacy</a>
         <a href="#pricing" class="btn btn-primary" style="height:32px;padding:0 12px;font-size:12.5px;">Get license ($49)</a>
       </nav>
     </div>
@@ -412,7 +413,7 @@
         <p>Intercom’s reporting CSV only exports ticket metadata columns without message text. ChatVault iterates through REST API v2.11 cursor pagination inside a dedicated local browser tab and writes clean Excel CSV, NDJSON, or Markdown directly to your drive.</p>
         <div class="cta-row">
           <a href="/workstation" class="btn btn-primary">Open workstation &amp; 500-chat sandbox</a>
-          <a href="#pricing" class="btn btn-secondary">View one-time licensing</a>
+          <a href="/security-factsheet" class="btn btn-secondary">Security &amp; GDPR factsheet (PDF)</a>
         </div>
         <div class="hero-telemetry-meta">
           <span>RAM ceiling: <strong>&lt;30 MB at 100k chats</strong></span>
@@ -514,12 +515,11 @@
           </ul>
         </div>
         <div class="arch-box">
-          <h3>Multi-region detection and 3 output schemas</h3>
-          <p>Automatically probes US (<code>api.intercom.io</code>), EU (<code>api.eu.intercom.io</code>), and AU (<code>api.au.intercom.io</code>) endpoints with a read-only token.</p>
+          <h3>Search API filtering, Deep Export, and 3 output schemas</h3>
+          <p>Filter exact slices using <code>POST /conversations/search</code> (Start Date, End Date, Tag name/ID, State) instead of dumping 80,000 irrelevant tickets, and probe US, EU, and AU gateways automatically.</p>
           <ul class="arch-list">
-            <li><strong>Clean Excel CSV (.csv).</strong> UTF-8 BOM (<code>\uFEFF</code>), RFC 4180 quote escaping, HTML tag stripping, and Summary or Detailed row granularity.</li>
-            <li><strong>Structured NDJSON (.jsonl).</strong> Preserves raw HTML alongside cleaned plain text for BigQuery, Snowflake, or LLM fine-tuning.</li>
-            <li><strong>Obsidian / RAG Markdown (.md).</strong> YAML frontmatter with threaded dialogue and internal note callouts.</li>
+            <li><strong>Deep Export enrichment &amp; local ZIP bundle.</strong> Optionally merge <code>GET /contacts/{id}</code> companies, custom attributes, and SLA statistics, plus package transcripts, attachment manifests, and <code>skipped_errors.json</code> locally.</li>
+            <li><strong>Clean Excel CSV, NDJSON, and Obsidian Markdown.</strong> UTF-8 BOM (<code>\uFEFF</code>), RFC 4180 quote escaping, HTML tag stripping, 32,000-char Excel cell guard, and Summary or Detailed row granularity.</li>
           </ul>
         </div>
       </div>

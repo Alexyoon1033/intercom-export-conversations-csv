@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://chatvault-exporter.pages.dev/sitemap.xml

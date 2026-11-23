@@ -7,6 +7,7 @@ Intercom's dashboard CSV export outputs ticket metadata columns (conversation ID
 This repository documents the **Intercom REST API v2.11 N+1 cursor pagination model**, the **10-second rate-limit header protocol**, **sample exports (Excel UTF-8 BOM CSV, Detailed CSV, NDJSON, Obsidian Markdown)** in [`/samples`](./samples), and links to the **100% local browser workstation**.
 
 - **Live Web Workstation & 500-Chat Interactive Sandbox (No Token Required):** https://chatvault-exporter.pages.dev/workstation
+- **Security & Zero-Data GDPR Factsheet (1-Page PDF for InfoSec Sign-Off):** https://chatvault-exporter.pages.dev/security-factsheet
 - **Full Technical Article:** https://chatvault-exporter.pages.dev/guide-missing-message-text
 - **Chrome Web Store Extension:** https://chromewebstore.google.com/detail/ejjialbdkhkphnlappeoiblihcmpkhmd
 - **Privacy Policy (Zero-Server Architecture):** https://chatvault-exporter.pages.dev/privacy

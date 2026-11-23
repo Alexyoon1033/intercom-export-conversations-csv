@@ -37,6 +37,10 @@ export class ExportEngine {
     this.maxConversations = typeof options.maxConversations === 'number' ? options.maxConversations : 50;
     this.checkpointInterval = options.checkpointInterval || CHECKPOINT_BATCH_SIZE;
     this.checkpointId = options.checkpointId || 'active_export';
+    this.filters = options.filters || {};
+    this.deepExport = Boolean(options.deepExport);
+    this.bundleAttachmentsZip = Boolean(options.bundleAttachmentsZip);
+    this.fetchAttachmentFn = options.fetchAttachmentFn || (typeof fetch !== 'undefined' ? fetch.bind(globalThis) : null);
     this.onProgress = options.onProgress || (() => {});
     this.onCheckpointSaved = options.onCheckpointSaved || (() => {});
   }
@@ -91,13 +95,31 @@ export class ExportEngine {
       startingAfter,
       completedIds,
       maxConversations: this.maxConversations,
+      filters: this.filters,
+      deepExport: this.deepExport,
       signal
     });
+
+    const attachmentManifest = [];
 
     for await (const item of stream) {
       const { conversation } = item;
       const serialized = this.serializeConversation(conversation);
       await this.streamer.write(serialized);
+
+      if (this.bundleAttachmentsZip && Array.isArray(conversation.messages)) {
+        for (const msg of conversation.messages) {
+          if (Array.isArray(msg.attachments)) {
+            for (const url of msg.attachments) {
+              attachmentManifest.push({
+                conversationId: conversation.id,
+                partId: msg.partId,
+                url
+              });
+            }
+          }
+        }
+      }
 
       completedIds.add(conversation.id);
       exportedCount = item.exportedCount;
@@ -172,6 +194,7 @@ export class ExportEngine {
       exportedCount,
       totalCount,
       skippedErrors,
+      attachmentManifest,
       bytesWritten: closeResult.bytesWritten,
       fileName: closeResult.fileName,
       streamMode: closeResult.mode,

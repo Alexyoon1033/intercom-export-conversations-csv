@@ -125,8 +125,13 @@ export const CSV_SUMMARY_HEADERS = [
   'customer_id',
   'customer_name',
   'customer_email',
+  'companies',
   'assignee',
+  'team_assignee',
   'tags',
+  'first_response_sec',
+  'time_to_close_sec',
+  'custom_attributes_json',
   'rating',
   'rating_remark',
   'message_count',
@@ -251,6 +256,11 @@ export function conversationToCsvRows(conv, mode = 'summary', options = {}) {
     }
   }
 
+  const companiesStr = Array.isArray(conv.companies) ? conv.companies.join('; ') : '';
+  const customAttrsStr = conv.customAttributes && Object.keys(conv.customAttributes).length > 0
+    ? JSON.stringify(conv.customAttributes)
+    : '';
+
   const summaryRow = [
     conv.id,
     conv.platform || 'intercom',
@@ -262,8 +272,13 @@ export function conversationToCsvRows(conv, mode = 'summary', options = {}) {
     conv.customerId || '',
     conv.customerName || '',
     conv.customerEmail || '',
+    companiesStr,
     conv.assignee || '',
+    conv.teamAssignee || '',
     tagsStr,
+    conv.firstResponseSec ?? '',
+    conv.timeToCloseSec ?? '',
+    customAttrsStr,
     conv.rating ?? '',
     conv.ratingRemark ?? '',
     publicLines.length,

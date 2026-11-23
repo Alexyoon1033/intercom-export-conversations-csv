@@ -14,6 +14,7 @@ import { FileStreamer } from './core/file-streamer.js';
 import { CheckpointDB } from './core/checkpoint-db.js';
 import { GumroadLicenseManager } from './core/gumroad-license.js';
 import { ExportEngine } from './core/export-engine.js';
+import { LocalZipBuilder } from './core/local-zip.js';
 import { htmlToCleanText } from './core/serializers.js';
 
 const checkpointDb = new CheckpointDB();
@@ -25,6 +26,7 @@ let currentLicenseState = {
   maxConversations: 50
 };
 let activeAbortController = null;
+let lastSkippedErrors = [];
 
 // DOM Elements
 const els = {
@@ -52,6 +54,15 @@ const els = {
   regionSelect: document.getElementById('regionSelect'),
   verifyTokenBtn: document.getElementById('verifyTokenBtn'),
   workspaceVerifyStatus: document.getElementById('workspaceVerifyStatus'),
+
+  filterStartDate: document.getElementById('filterStartDate'),
+  filterEndDate: document.getElementById('filterEndDate'),
+  filterTagInput: document.getElementById('filterTagInput'),
+  filterStateSelect: document.getElementById('filterStateSelect'),
+  deepExportToggle: document.getElementById('deepExportToggle'),
+  bundleZipToggle: document.getElementById('bundleZipToggle'),
+  skippedErrorsDownloadWrap: document.getElementById('skippedErrorsDownloadWrap'),
+  downloadSkippedJsonBtn: document.getElementById('downloadSkippedJsonBtn'),
 
   exportFormatSelect: document.getElementById('exportFormatSelect'),
   csvModeGroup: document.getElementById('csvModeGroup'),
@@ -149,6 +160,16 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
   const format = els.exportFormatSelect.value;
   const csvMode = els.csvModeSelect.value;
   const preferDiskStream = els.preferDiskStreamToggle.checked;
+  const deepExport = Boolean(els.deepExportToggle?.checked);
+  const bundleZip = Boolean(els.bundleZipToggle?.checked);
+
+  const filters = {
+    startDate: els.filterStartDate?.value?.trim() || '',
+    endDate: els.filterEndDate?.value?.trim() || '',
+    tag: els.filterTagInput?.value?.trim() || '',
+    state: els.filterStateSelect?.value?.trim() || ''
+  };
+  const hasFilters = Boolean(filters.startDate || filters.endDate || filters.tag || filters.state);
 
   let adapter;
   let maxConversations;
@@ -169,11 +190,11 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
       rateLimitPauseMs: 350,
       onRateLimitWait
     });
-    appendLog(`Starting 500-Chat Interactive Sandbox Demo (Cap: ${maxConversations} chats, Format: ${format.toUpperCase()})...`, 'info');
+    appendLog(`Starting 500-Chat Interactive Sandbox Demo (Cap: ${maxConversations} chats, Format: ${format.toUpperCase()}${hasFilters ? ', Search Filters Active' : ''}${deepExport ? ', Deep Export ON' : ''})...`, 'info');
   } else {
     const token = els.intercomTokenInput.value.trim();
     if (!token) {
-      alert('Please enter your Intercom Access Token first, or click "Try 500-Chat Interactive Demo" to test without a token.');
+      alert('Please enter your Intercom Access Token first, or click "Run 500-chat sandbox export" to test without a token.');
       els.intercomTokenInput.focus();
       return;
     }
@@ -183,7 +204,7 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
       region: els.regionSelect.value,
       onRateLimitWait
     });
-    appendLog(`Validating Intercom workspace & starting live export (Mode: ${currentLicenseState.tier}, Format: ${format.toUpperCase()})...`, 'info');
+    appendLog(`Validating Intercom workspace & starting live export (Mode: ${currentLicenseState.tier}, Format: ${format.toUpperCase()}${hasFilters ? ', Search API Filtered' : ''}${deepExport ? ', Deep Export Enriched' : ''})...`, 'info');
   }
 
   activeAbortController = new AbortController();
@@ -198,7 +219,7 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
   const streamer = new FileStreamer({
     format,
     suggestedName,
-    preferDiskStream
+    preferDiskStream: bundleZip ? false : preferDiskStream
   });
 
   const engine = new ExportEngine({
@@ -208,6 +229,9 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
     format,
     csvMode,
     maxConversations,
+    filters,
+    deepExport,
+    bundleAttachmentsZip: bundleZip,
     checkpointInterval: 50,
     onProgress: ({ exportedCount, totalCount, bytesWritten, streamMode, skippedCount }) => {
       els.statExportedCount.textContent = exportedCount.toLocaleString();
@@ -215,7 +239,9 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
       els.statTotalCount.textContent = totalCount ? totalCount.toLocaleString() : '—';
       els.statBytesWritten.textContent = formatBytes(bytesWritten);
       els.statSkippedCount.textContent = String(skippedCount);
-      els.streamModePill.textContent = streamMode === 'disk-stream' ? 'Direct-to-Disk Stream (<30MB RAM)' : 'Chunked Blob Stream';
+      els.streamModePill.textContent = bundleZip
+        ? 'Local ZIP Bundle'
+        : (streamMode === 'disk-stream' ? 'Direct-to-Disk Stream (<30MB RAM)' : 'Chunked Blob Stream');
 
       const pct = targetTotal > 0 ? Math.min(100, Math.round((exportedCount / targetTotal) * 100)) : 0;
       els.exportProgressBar.style.width = `${pct}%`;
@@ -228,15 +254,58 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
   try {
     if (!isSandbox && !resumeSnapshot) {
       const info = await adapter.verifyAndDetectRegion();
-      appendLog(`Connected to ${info.workspaceName} [${info.region} Region] • Total Conversations: ${info.totalCount.toLocaleString()}`, 'success');
+      appendLog(`Connected to ${info.workspaceName} [${info.region} Region] • Total Workspace Conversations: ${info.totalCount.toLocaleString()}`, 'success');
       els.statTotalCount.textContent = info.totalCount.toLocaleString();
     }
 
     const result = await engine.run({
       resumeSnapshot,
       signal: activeAbortController.signal,
-      triggerBrowserDownload: true
+      triggerBrowserDownload: !bundleZip
     });
+
+    lastSkippedErrors = Array.isArray(result.skippedErrors) ? result.skippedErrors : [];
+    if (lastSkippedErrors.length > 0 && els.skippedErrorsDownloadWrap) {
+      els.skippedErrorsDownloadWrap.classList.remove('hidden');
+      els.downloadSkippedJsonBtn.textContent = `Download skipped_errors.json (${lastSkippedErrors.length} skipped)`;
+    } else if (els.skippedErrorsDownloadWrap) {
+      els.skippedErrorsDownloadWrap.classList.add('hidden');
+    }
+
+    if (bundleZip && typeof result.getText === 'function') {
+      const zip = new LocalZipBuilder();
+      zip.addFile(suggestedName, result.getText());
+      zip.addFile('skipped_errors.json', JSON.stringify(lastSkippedErrors, null, 2));
+      zip.addFile(
+        'attachments_manifest.json',
+        JSON.stringify(
+          {
+            exportedAt: new Date().toISOString(),
+            exportedCount: result.exportedCount,
+            filters,
+            deepExport,
+            attachments: result.attachmentManifest || []
+          },
+          null,
+          2
+        )
+      );
+
+      const zipBlob = zip.buildBlob();
+      const zipName = `${prefix}-${new Date().toISOString().slice(0, 10)}-bundle.zip`;
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = zipName;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 2500);
+      appendLog(`Packaged ZIP bundle ${zipName} (${formatBytes(zipBlob.size)}) with transcripts, attachments_manifest.json, and skipped_errors.json.`, 'success');
+    }
 
     const dot = els.rateLimitNotice.querySelector('.dot');
     if (dot) dot.className = 'dot dot-ok';
@@ -248,7 +317,7 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
       appendLog(`Export paused at ${result.exportedCount} conversations. Checkpoint saved in IndexedDB for instant resume.`, 'warn');
     } else {
       appendLog(
-        `Export completed! ${result.exportedCount.toLocaleString()} full conversation transcripts (${formatBytes(result.bytesWritten)}) saved to ${result.fileName} via ${result.streamMode}.`,
+        `Export completed! ${result.exportedCount.toLocaleString()} full conversation transcripts (${formatBytes(result.bytesWritten)}) saved${bundleZip ? ' inside local ZIP bundle' : ` to ${result.fileName} via ${result.streamMode}`}.`,
         'success'
       );
       if (!currentLicenseState.valid && result.exportedCount >= 50 && !isSandbox) {
@@ -360,10 +429,26 @@ async function initWorkstation() {
     appendLog('Discarded saved checkpoint.', 'info');
   });
 
-  // 8. Clear log button
+  // 8. Clear log & Skipped JSON download buttons
   els.clearLogBtn.addEventListener('click', () => {
     els.activityLogBox.innerHTML = '';
   });
+
+  if (els.downloadSkippedJsonBtn) {
+    els.downloadSkippedJsonBtn.addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(lastSkippedErrors, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `chatvault-skipped-errors-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 2000);
+    });
+  }
 
   // 9. License Modal events
   els.openLicenseModalBtn.addEventListener('click', () => {

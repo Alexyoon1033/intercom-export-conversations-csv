@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security &amp; Privacy Architecture Factsheet — ChatVault (for Intercom)</title>
+  <meta name="description" content="One-page B2B InfoSec & GDPR/CCPA Architecture Factsheet for ChatVault: Conversation Transcript & CSV Exporter (for Intercom).">
+  <style>
+    :root {
+      --bg: #0f1012;
+      --surface: #15171a;
+      --control: #111315;
+      --border: rgba(255,255,255,0.1);
+      --text: #ededef;
+      --muted: #a0a4ab;
+      --signal: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      padding: 40px 24px;
+    }
+    .sheet {
+      max-width: 860px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 40px;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    h1 { font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+    .meta { font-family: monospace; font-size: 12px; color: var(--muted); }
+    .btn-print {
+      background: #ededef;
+      color: #0f1012;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .summary-box {
+      background: var(--control);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    h2 { font-size: 16px; font-weight: 600; margin: 24px 0 10px; color: var(--text); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+      font-size: 13.5px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 500;
+      width: 240px;
+      background: var(--control);
+    }
+    td { color: var(--text); }
+    code {
+      font-family: 'JetBrains Mono', Consolas, monospace;
+      background: #1b1e22;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    ul { padding-left: 20px; color: var(--muted); font-size: 14px; display: flex; flex-direction: column; gap: 6px; }
+    strong { color: var(--text); font-weight: 500; }
+    a { color: var(--text); }
+    .footer {
+      margin-top: 28px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    @media print {
+      body { background: #ffffff; color: #111111; padding: 0; }
+      .sheet { background: #ffffff; border: none; padding: 16px; }
+      .btn-print, .no-print { display: none !important; }
+      .summary-box, th, code { background: #f4f4f5; color: #111111; border-color: #d4d4d8; }
+      td, p, li, .meta, .footer { color: #27272a; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="top-bar">
+      <div>
+        <h1>Security &amp; Zero-Data Architecture Factsheet</h1>
+        <div class="meta">Product: ChatVault: Conversation Transcript &amp; CSV Exporter (for Intercom) &middot; Version 1.1.0 &middot; Document Date: Nov 2026</div>
+      </div>
+      <button class="btn-print" onclick="window.print()" type="button">Save / Print as PDF</button>
+    </div>
+
+    <div class="summary-box">
+      <strong>GDPR / CCPA Executive Summary for InfoSec &amp; Procurement Teams:</strong><br>
+      ChatVault is a <strong>100% client-side, zero-backend browser utility</strong>. It runs strictly inside the employee's local Chromium browser and streams exported transcripts directly to the user's local hard drive via <code>FileSystemWritableFileStream</code>. Because the vendor operates <strong>zero backend servers</strong> and never receives, stores, proxies, or accesses any Intercom tokens or customer PII, ChatVault does not act as a Data Processor or Sub-processor under GDPR Art. 28 or CCPA.
+    </div>
+
+    <h2>1. Technical Architecture &amp; Network Boundaries (Enforced by Chrome MV3 Sandbox)</h2>
+    <table>
+      <tr>
+        <th>Chrome Extension Permissions</th>
+        <td><code>["storage"]</code> only (1 minimal permission; no <code>tabs</code>, <code>activeTab</code>, <code>scripting</code>, <code>cookies</code>, or <code>&lt;all_urls&gt;</code>).</td>
+      </tr>
+      <tr>
+        <th>Allowed Host Permissions (Strict Egress Allowlist)</th>
+        <td>
+          <code>https://api.intercom.io/*</code> (US Workspace API)<br>
+          <code>https://api.eu.intercom.io/*</code> (EU Workspace API)<br>
+          <code>https://api.au.intercom.io/*</code> (AU Workspace API)<br>
+          <code>https://api.gumroad.com/*</code> (License Key Verification Only)<br>
+          <em>The Chromium MV3 sandbox structurally blocks outbound requests to any other domain.</em>
+        </td>
+      </tr>
+      <tr>
+        <th>Vendor Backend / Telemetry Servers</th>
+        <td><strong>None (0 bytes transmitted).</strong> No analytics SDKs, no crash reporters, no remote code execution.</td>
+      </tr>
+      <tr>
+        <th>Intercom Token Scope Required</th>
+        <td><strong>Read-Only Internal Integration Token</strong> (<code>Read conversations</code>, <code>Read contacts</code>, <code>Read admins</code>). All write scopes remain unchecked. Token stays in volatile browser memory and is never persisted to remote servers.</td>
+      </tr>
+      <tr>
+        <th>Local Persistence</th>
+        <td>Only pagination checkpoints (<code>IndexedDB</code>) and license verification timestamp (<code>chrome.storage.local</code>), both clearable in one click inside the workstation UI.</td>
+      </tr>
+      <tr>
+        <th>Open Auditability</th>
+        <td>Full unminified ES Module source code is publicly auditable at <a href="https://github.com/Alexyoon1033/intercom-export-conversations-csv" target="_blank" rel="noopener noreferrer">github.com/Alexyoon1033/intercom-export-conversations-csv</a>.</td>
+      </tr>
+    </table>
+
+    <h2>2. Data Flow Verification (Zero Intermediaries)</h2>
+    <ul>
+      <li><strong>Step 1 (Read):</strong> Employee's browser sends authenticated HTTPS GET/POST requests directly to official Intercom regional API gateways (<code>Intercom-Version: 2.11</code>).</li>
+      <li><strong>Step 2 (Transform):</strong> HTML stripping, Excel UTF-8 BOM formatting, 32,000-character cell protection, and optional ZIP packaging occur locally in the employee's browser RAM (<code>&lt;30 MB</code> ceiling via 50-chat disk flushes).</li>
+      <li><strong>Step 3 (Write):</strong> Clean <code>.csv</code>, <code>.jsonl</code>, <code>.md</code>, or <code>.zip</code> output is written directly to the employee's local corporate disk.</li>
+    </ul>
+
+    <div class="footer">
+      <span>Disclaimer: Independent third-party utility. Not affiliated with, endorsed, or sponsored by Intercom, Inc.</span>
+      <span class="no-print"><a href="/">Home</a> &middot; <a href="/workstation">Workstation</a> &middot; <a href="/privacy">Privacy Policy</a></span>
+    </div>
+  </div>
+</body>
+</html>
