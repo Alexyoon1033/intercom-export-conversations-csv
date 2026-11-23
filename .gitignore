@@ -1,4 +1,8 @@
 dist/extension-stage/
+dist/ChatVault-Intercom-Exporter-Demo-1080p.mp4
+dist/youtube-demo/
+dist/chatvault-intercom-exporter-v*.zip
+!dist/chatvault-intercom-exporter-v1.2.2.zip
 node_modules/
 .DS_Store
 Thumbs.db

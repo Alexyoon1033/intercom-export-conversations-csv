@@ -8,6 +8,8 @@
  *   automatically extends the local grace period by 7 days so paying customers are never locked out.
  */
 
+import { classifyLicense } from './license-entitlements.js';
+
 export const GUMROAD_VERIFY_URL = 'https://api.gumroad.com/v2/licenses/verify';
 export const DEFAULT_PRODUCT_ID = 'xHRLb6ag8tx-PqVSO1E_Vw==';
 export const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -98,24 +100,15 @@ export class GumroadLicenseManager {
       return { valid: false, reason: 'This license key was chargebacked and has been revoked.' };
     }
 
-    const variants = String(p.variants || p.variant_name || '').toLowerCase();
-    const priceCents = Number(p.price || 0);
-    let tier = 'Basic ($29)';
-    if (variants.includes('agency') || priceCents >= 12000) {
-      tier = 'Agency ($149)';
-    } else if (variants.includes('pro') || variants.includes('standard') || priceCents >= 4500) {
-      tier = 'Pro ($79)';
-    } else if (variants.includes('basic') || priceCents >= 2000) {
-      tier = 'Basic ($29)';
-    }
+    const classification = classifyLicense(p);
 
     return {
       valid: true,
-      tier,
+      ...classification,
       email: p.email || '',
       saleId: p.sale_id || p.id || '',
       uses: typeof data.uses === 'number' ? data.uses : 1,
-      reason: 'Active Pro license verified.'
+      reason: 'Active license verified.'
     };
   }
 
@@ -164,6 +157,7 @@ export class GumroadLicenseManager {
           valid: true,
           licenseKey: cleanKey,
           tier: evalResult.tier,
+          plan: evalResult.plan,
           email: evalResult.email,
           saleId: evalResult.saleId,
           verifiedAt: now,
@@ -178,7 +172,7 @@ export class GumroadLicenseManager {
         };
       } else {
         // Explicit revocation (refunded / disputed / chargebacked / invalid) -> clear cache immediately
-        await this.storage.remove(STORAGE_KEY);
+        if (existingState?.licenseKey === cleanKey) await this.storage.remove(STORAGE_KEY);
         return {
           valid: false,
           tier: 'Free (50-Chat Cap)',
@@ -228,7 +222,7 @@ export class GumroadLicenseManager {
         valid: false,
         tier: 'Free (50-Chat Cap)',
         maxConversations: 50,
-        reason: 'No active Pro license. Free tier allows up to 50 full conversation transcripts.'
+        reason: 'No active paid license. Free tier allows up to 50 full conversation transcripts.'
       };
     }
 
@@ -238,7 +232,7 @@ export class GumroadLicenseManager {
         ...cached,
         maxConversations: Infinity,
         fromCache: true,
-        reason: 'Pro license active (cached within 7-day verification window).'
+        reason: 'License active (cached within 7-day verification window).'
       };
     }
 

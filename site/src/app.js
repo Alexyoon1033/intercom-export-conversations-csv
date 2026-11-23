@@ -18,6 +18,7 @@ import { buildExportZipBundle } from './core/zip-packager.js';
 import { htmlToCleanText } from './core/serializers.js';
 import { createExportAudit } from './core/export-audit.js';
 import { formatSkippedErrors } from './core/export-privacy.js';
+import { getExportEntitlements, requiresAdvancedExport } from './core/license-entitlements.js';
 
 const checkpointDb = new CheckpointDB();
 const licenseManager = new GumroadLicenseManager();
@@ -64,6 +65,7 @@ const els = {
   filterStateSelect: document.getElementById('filterStateSelect'),
   maskPatternsToggle: document.getElementById('maskPatternsToggle'),
   downloadAuditBtn: document.getElementById('downloadAuditBtn'),
+  exportPlanNotice: document.getElementById('exportPlanNotice'),
   deepExportToggle: document.getElementById('deepExportToggle'),
   bundleZipToggle: document.getElementById('bundleZipToggle'),
   skippedErrorsDownloadWrap: document.getElementById('skippedErrorsDownloadWrap'),
@@ -110,7 +112,7 @@ function updateLicenseBadgeUI(state) {
   if (!els.licenseStatusBadge) return;
   if (state.valid) {
     els.licenseStatusBadge.className = 'badge badge-pro';
-    els.licenseStatusBadge.textContent = `Pro Unlocked — ${state.tier || 'Unlimited'}`;
+    els.licenseStatusBadge.textContent = `${state.tier || 'Paid license'} active`;
   } else {
     els.licenseStatusBadge.className = 'badge badge-free';
     els.licenseStatusBadge.textContent = 'Free Mode (Up to 50 Full Transcripts)';
@@ -149,7 +151,7 @@ function renderTranscriptPreviews(conversations) {
 
     const header = document.createElement('div');
     header.className = 'preview-item-header';
-    header.textContent = `#${conv.id} • ${conv.title || 'Conversation'} (${conv.region || 'US'} • ${conv.state})`;
+    header.textContent = `#${conv.id} • ${htmlToCleanText(conv.title) || 'Conversation'} (${conv.region || 'US'} • ${conv.state})`;
     box.appendChild(header);
 
     const messages = Array.isArray(conv.messages) ? conv.messages.slice(0, 4) : [];
@@ -181,7 +183,14 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
     tag: els.filterTagInput?.value?.trim() || '',
     state: els.filterStateSelect?.value?.trim() || ''
   };
-  const hasFilters = Boolean(filters.startDate || filters.endDate || filters.tag || filters.state);
+  const hasFilters = Object.values(filters).some(Boolean);
+  const entitlements = getExportEntitlements(currentLicenseState, isSandbox);
+  if (!entitlements.advanced && requiresAdvancedExport({ filters, deepExport, maskPatterns, bundleZip })) {
+    els.exportPlanNotice.textContent = 'Live filters, enrichment, masking and ZIP require Pro or Agency. Clear these options for a standard export, or run the free sandbox.';
+    els.exportPlanNotice.classList.remove('hidden');
+    return;
+  }
+  els.exportPlanNotice.classList.add('hidden');
 
   let adapter;
   let maxConversations;
@@ -194,8 +203,7 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
   };
 
   if (isSandbox) {
-    const simulatePro = els.sandboxUnlockAllToggle.checked || currentLicenseState.valid;
-    maxConversations = simulatePro ? 500 : 50;
+    maxConversations = els.sandboxUnlockAllToggle.checked || currentLicenseState.valid ? entitlements.maxConversations : 50;
     adapter = new SandboxDemoAdapter({
       totalDemoCount: 500,
       simulateRateLimitPause: true,
@@ -210,7 +218,7 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
       els.intercomTokenInput.focus();
       return;
     }
-    maxConversations = currentLicenseState.valid ? Infinity : 50;
+    maxConversations = entitlements.maxConversations;
     adapter = new IntercomAdapter({
       token,
       region: els.regionSelect.value,
@@ -296,7 +304,7 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
     });
 
     lastSkippedErrors = formatSkippedErrors(result.skippedErrors, maskPatterns);
-    lastAuditText = await createExportAudit(result, { sandbox: isSandbox, masked: maskPatterns });
+    if (entitlements.advanced) lastAuditText = await createExportAudit(result, { sandbox: isSandbox, masked: maskPatterns });
     if (lastSkippedErrors.length > 0 && els.skippedErrorsDownloadWrap) {
       els.skippedErrorsDownloadWrap.classList.remove('hidden');
       els.downloadSkippedJsonBtn.textContent = `Download skipped_errors.json (${lastSkippedErrors.length} skipped)`;
@@ -335,7 +343,7 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
       appendLog(`Packaged JSZip bundle ${zipName} (${formatBytes(zipResult.size)}) — ${zipResult.downloadedAttachmentsCount} binaries fetched, ${lastSkippedErrors.length} skipped errors logged.`, 'success');
     }
 
-    els.downloadAuditBtn.classList.remove('hidden');
+    if (lastAuditText) els.downloadAuditBtn.classList.remove('hidden');
     const dot = els.rateLimitNotice.querySelector('.dot');
     if (dot) dot.className = 'dot dot-ok';
     els.rateLimitText.textContent = 'Rate-limit monitor idle';
@@ -522,7 +530,7 @@ async function initWorkstation() {
     } else {
       els.licenseVerifyMessage.className = 'status-callout status-err';
       els.licenseVerifyMessage.textContent = result.reason;
-      updateLicenseBadgeUI({ valid: false, tier: 'Free (50-Chat Cap)', maxConversations: 50 });
+      updateLicenseBadgeUI(await licenseManager.getLicenseStatus());
     }
   });
 

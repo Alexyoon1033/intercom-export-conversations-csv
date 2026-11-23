@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="chatvault-release" content="1.2.2">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ChatVault: Conversation Transcript &amp; CSV Exporter (for Intercom)</title>
   <meta name="description" content="Stream full Intercom conversation transcripts, customer replies, and internal notes directly to disk as Clean Excel CSV, NDJSON, or Markdown in your browser.">
@@ -383,6 +384,16 @@
       flex-wrap: wrap;
       gap: 12px;
     }
+    @media (max-width: 650px) {
+      .container { padding-left: 16px; padding-right: 16px; }
+      .nav-bar { min-height: 64px; height: auto; padding-top: 12px; padding-bottom: 12px; flex-wrap: wrap; }
+      .nav-links { flex-wrap: wrap; gap: 10px 14px; }
+      .hero-split { grid-template-columns: minmax(0, 1fr); }
+      .hero-copy h1 { overflow-wrap: anywhere; }
+      .artifact-window { overflow-x: auto; }
+      .artifact-bar { min-width: 420px; }
+      .ledger-table { min-width: 420px; }
+    }
     #costEstimate label { display: block; margin-top: 8px; }
     #costEstimate input { max-width: 100%; padding: 5px 8px; }
   </style>
@@ -411,8 +422,8 @@
         <div class="disclaimer-line">
           Independent third-party utility. Not affiliated with Intercom, Inc.
         </div>
-        <h1>Archive Intercom conversations before your renewal</h1>
-        <p>Keep replies and internal notes in separate fields for review or handoff. Try a synthetic archive first, then check up to 50 conversations in your own workspace with the Chrome extension.</p>
+        <h1>Save Intercom replies and internal notes before renewal</h1>
+        <p>Download a CSV you can open in Excel, with replies and internal notes in separate columns. Try the 500-conversation demo or check up to 50 conversations from your own Intercom workspace with the Chrome extension.</p>
         <div class="cta-row">
           <a href="/workstation" class="btn btn-primary">Try the 500-conversation demo</a>
           <a href="/security-factsheet" class="btn btn-secondary">Security factsheet</a>
@@ -577,7 +588,7 @@
         </div>
       </div>
 
-      <p style="margin:18px 0;color:var(--text-secondary);">Paid keys remove the trial cap. Current paid builds expose the same export controls across tiers. Basic is the lowest-cost option for standard export use.</p>
+      <p style="margin:18px 0;color:var(--text-secondary);">New Core Basic licenses cover standard exports. Pro adds tools for filtering, cleaning and checking an archive. Existing licenses keep their export features.</p>
       <div class="pricing-grid">
         <div class="pricing-card featured">
           <div>
@@ -598,7 +609,10 @@
             <h3>Pro license</h3>
             <div class="price-tag">$79 <span>/ one-time</span></div>
             <ul class="tier-list">
-              <li>Check the seller's terms before selecting a higher tier.</li>
+              <li>Filter by date, tag and conversation state</li>
+              <li>Enrich contacts, company details and custom fields</li>
+              <li>Mask common personal data patterns and package files in a ZIP</li>
+              <li>Download a SHA-256 export report</li>
             </ul>
           </div>
           <a href="https://ydwizzle.gumroad.com/l/intercom-exporter" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">View product terms</a>
@@ -609,11 +623,18 @@
             <h3>Agency license</h3>
             <div class="price-tag">$149 <span>/ one-time</span></div>
             <ul class="tier-list">
-              <li>Confirm client-use terms with the seller before buying for an agency.</li>
+              <li>All Pro export tools</li>
+              <li>For client work under the seller's agency license terms</li>
             </ul>
           </div>
           <a href="https://ydwizzle.gumroad.com/l/intercom-exporter" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">View product terms</a>
         </div>
+      </div>
+    </section>
+    <section class="specs-section" aria-labelledby="technicalScope">
+      <div class="section-head">
+        <h2 id="technicalScope">Technical scope</h2>
+        <p>Live exports use the Chrome extension and an approved Intercom token. Throughput and transcript coverage depend on the API and selected workspace. Very long conversations may omit parts from the API response. Use date ranges for large archives. ZIP files use browser memory. Review masked output before sharing because identifying details can remain. A SHA-256 report checks file bytes and does not establish source completeness.</p>
       </div>
     </section>
   </main>

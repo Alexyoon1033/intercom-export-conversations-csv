@@ -5,8 +5,8 @@
  */
 
 const ENDPOINTS = [
-  { name: 'Cloudflare Landing', url: 'https://chatvault-exporter.pages.dev/', mustContain: ['ChatVault', 'ydwizzle.gumroad.com/l/intercom-exporter', 'comparisonHeading', 'costEstimate'] },
-  { name: 'Cloudflare Workstation', url: 'https://chatvault-exporter.pages.dev/workstation', mustContain: ['runSandboxDemoBtn', 'filterStartDate', 'deepExportToggle', 'bundleZipToggle', 'maskPatternsToggle', 'downloadAuditBtn', 'xHRLb6ag8tx-PqVSO1E_Vw=='], checkJsUrl: 'https://chatvault-exporter.pages.dev/src/core/gumroad-license.js' },
+  { name: 'Cloudflare Landing', url: 'https://chatvault-exporter.pages.dev/', mustContain: ['ChatVault', 'ydwizzle.gumroad.com/l/intercom-exporter', 'comparisonHeading', 'costEstimate', 'technicalScope', '1.2.2'] },
+  { name: 'Cloudflare Workstation', url: 'https://chatvault-exporter.pages.dev/workstation', mustContain: ['runSandboxDemoBtn', 'filterStartDate', 'deepExportToggle', 'bundleZipToggle', 'maskPatternsToggle', 'downloadAuditBtn', 'exportPlanNotice', '1.2.2', 'xHRLb6ag8tx-PqVSO1E_Vw=='], checkJsUrl: 'https://chatvault-exporter.pages.dev/src/core/gumroad-license.js' },
   { name: 'Cloudflare Security Factsheet', url: 'https://chatvault-exporter.pages.dev/security-factsheet', mustContain: ['Security &amp; Data Flow Factsheet', 'Declared Extension Host Permissions'] },
   { name: 'Cloudflare Privacy', url: 'https://chatvault-exporter.pages.dev/privacy', mustContain: ['storage', 'host_permissions'], mustNotContain: ['<li><code>downloads</code>'] },
   { name: 'Cloudflare API Guide', url: 'https://chatvault-exporter.pages.dev/guide-missing-message-text', mustContain: ['Intercom REST API v2.11', 'starting_after'] },

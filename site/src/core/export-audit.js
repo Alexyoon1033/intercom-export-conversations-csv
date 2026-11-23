@@ -1,18 +1,22 @@
-// Web Crypto digests require a contiguous buffer. Bound the extra allocation.
-export const MAX_AUDIT_HASH_BYTES = 32 * 1024 * 1024;
+import { sha256 } from '../libs/noble-hashes/sha2.js';
+import { bytesToHex } from '../libs/noble-hashes/utils.js';
+
+const HASH_CHUNK_BYTES = 1024 * 1024;
+
+async function hashFile(file) {
+  const hash = sha256.create();
+  for (let offset = 0; offset < file.size; offset += HASH_CHUNK_BYTES) {
+    const chunk = await file.slice(offset, offset + HASH_CHUNK_BYTES).arrayBuffer();
+    hash.update(new Uint8Array(chunk));
+  }
+  return bytesToHex(hash.digest());
+}
 
 export async function createExportAudit(result, { sandbox, masked } = {}) {
   let checksum = 'Unavailable (transcript bytes could not be read)';
   try {
-    if (result.bytesWritten > MAX_AUDIT_HASH_BYTES) {
-      checksum = 'Omitted (transcript exceeds the 32 MiB in-browser hash limit)';
-    } else {
-      const file = await result.getFile?.();
-      if (file && file.size === result.bytesWritten && file.size <= MAX_AUDIT_HASH_BYTES) {
-        const digest = await globalThis.crypto.subtle.digest('SHA-256', await file.arrayBuffer());
-        checksum = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
-      }
-    }
+    const file = await result.getFile?.();
+    if (file && file.size === result.bytesWritten) checksum = await hashFile(file);
   } catch {
     // A browser may refuse to reopen a disk file. Keep the counts available.
   }

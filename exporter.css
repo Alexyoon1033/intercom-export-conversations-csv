@@ -267,6 +267,7 @@ code {
 }
 
 .panel-column {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -497,6 +498,16 @@ select:focus {
 .action-buttons-row {
   display: flex;
   gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .app-shell { padding: 12px; }
+  .card { padding: 14px; }
+  .card-header { height: auto; min-width: 0; gap: 8px; flex-wrap: wrap; }
+  .form-row-2 { grid-template-columns: minmax(0, 1fr); }
+  .action-buttons-row { flex-wrap: wrap; }
+  .top-header, .sandbox-hero { overflow-wrap: anywhere; }
+  .telemetry-card .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Telemetry Stats */

@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="chatvault-release" content="1.2.2">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ChatVault: Conversation Transcript &amp; CSV Exporter (for Intercom)</title>
-  <link rel="stylesheet" href="exporter.css">
+  <link rel="stylesheet" href="exporter.css?v=1.2.2">
 </head>
 <body>
   <div class="app-shell">
@@ -65,7 +66,7 @@
 
           <div id="tokenGuideBox" class="token-guide-box">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-              <h3 style="margin:0;">Create a read-only Intercom access token (60s)</h3>
+              <h3 style="margin:0;">Create a read-only Intercom access token</h3>
               <a href="https://app.intercom.com/a/apps/_/developer-hub" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs">Open Intercom Developer Hub &rarr;</a>
             </div>
             <ol class="token-steps">
@@ -175,6 +176,7 @@
             </label>
           </div>
 
+          <p id="exportPlanNotice" class="status-callout hidden" role="status"></p>
           <div class="action-buttons-row">
             <button id="startLiveExportBtn" class="btn btn-primary btn-lg" type="button">
               Start live Intercom export
@@ -256,19 +258,19 @@
           <button id="closeLicenseModalBtn" class="btn btn-ghost btn-sm" type="button">Close</button>
         </div>
         <div class="modal-body">
-          <p>Start with up to 50 live conversations. A paid key removes the trial cap. Current paid builds expose the same export controls across tiers.</p>
+          <p>Try advanced tools in the sandbox or export up to 50 live conversations in standard mode. Existing licenses retain their export features.</p>
           <div class="pricing-tiers" style="grid-template-columns: repeat(3, 1fr);">
             <div class="tier-box">
               <h3>Basic <span class="tier-sub">($29)</span></h3>
-              <p>Choose Basic for a standard export.</p>
+              <p>Standard live exports to CSV, NDJSON or Markdown without the free 50-conversation cap.</p>
             </div>
             <div class="tier-box">
               <h3>Pro <span class="tier-sub">($79)</span></h3>
-              <p>Check the seller's terms before choosing a higher tier.</p>
+              <p>Advanced filters, contact enrichment, masking, ZIP and SHA-256 report.</p>
             </div>
             <div class="tier-box">
               <h3>Agency <span class="tier-sub">($149)</span></h3>
-              <p>Check client-use terms with the seller before buying for an agency.</p>
+              <p>Pro export tools for agency work. Check the Gumroad license terms for client use.</p>
             </div>
           </div>
 
@@ -297,7 +299,7 @@
         Disclaimer: Independent third-party utility. Not affiliated with, endorsed, or sponsored by Intercom, Inc.
       </p>
       <p class="privacy-note">
-        100% local execution. Zero bytes of your conversations or tokens leave your browser. Direct HTTPS requests go only to <code>api.intercom.io</code> (US, EU, AU) and <code>api.gumroad.com</code>.
+        Transcripts are processed in your browser. The extension sends API requests to Intercom and checks license keys with Gumroad. When requested, unmasked ZIP exports can also fetch attachment files from the URLs returned by Intercom.
         &middot; <a href="https://chatvault-exporter.pages.dev/privacy" target="_blank" rel="noopener noreferrer">Privacy policy</a>
         &middot; <a href="https://chatvault-exporter.pages.dev/" target="_blank" rel="noopener noreferrer">Documentation</a>
       </p>
@@ -305,6 +307,6 @@
   </div>
 
   <script src="src/libs/jszip.min.js"></script>
-  <script type="module" src="src/app.js"></script>
+  <script type="module" src="src/app.js?v=1.2.2"></script>
 </body>
 </html>

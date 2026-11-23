@@ -7,7 +7,8 @@ import { SandboxDemoAdapter } from '../src/core/sandbox-demo.js';
 
 import { IntercomAdapter } from '../src/adapters/intercom.js';
 import { CheckpointDB } from '../src/core/checkpoint-db.js';
-import { createExportAudit, MAX_AUDIT_HASH_BYTES } from '../src/core/export-audit.js';
+import { createExportAudit } from '../src/core/export-audit.js';
+import { classifyLicense, getExportEntitlements, requiresAdvancedExport } from '../src/core/license-entitlements.js';
 import { ExportEngine } from '../src/core/export-engine.js';
 import { formatSkippedErrors } from '../src/core/export-privacy.js';
 import { FileStreamer } from '../src/core/file-streamer.js';
@@ -79,10 +80,51 @@ test('audit uses exact transcript bytes, preserves trailing and all-skipped reco
   }).run(options);
   assert.equal(skipped.segmentSkipped, 1);
   assert.equal(skipped.segmentConversations, 0);
-  const tooLarge = await createExportAudit({ ...result, bytesWritten: MAX_AUDIT_HASH_BYTES + 1, getFile: () => {
-    assert.fail('Large export must not be read for hashing');
-  } });
-  assert.match(tooLarge, /Omitted .*32 MiB/);
+  const wrongSize = await createExportAudit({ ...result, bytesWritten: result.bytesWritten + 1 });
+  assert.match(wrongSize, /Unavailable/);
+});
+
+test('hashes a 50 MiB transcript in bounded chunks', async () => {
+  const oneMiB = new Uint8Array(1024 * 1024).fill(0x61);
+  const file = new Blob(Array(50).fill(oneMiB));
+  const expected = createHash('sha256');
+  for (let index = 0; index < 50; index++) expected.update(oneMiB);
+  let readCount = 0;
+  const report = await createExportAudit({
+    bytesWritten: file.size,
+    getFile: () => ({
+      size: file.size,
+      slice(start, end) {
+        assert.ok(end - start <= 1024 * 1024);
+        readCount++;
+        return file.slice(start, end);
+      }
+    })
+  });
+  assert.equal(readCount, 50);
+  assert.ok(report.includes(expected.digest('hex')));
+});
+
+test('only the new verified Core Basic variant loses advanced features', () => {
+  for (const purchase of [
+    { variants: 'Basic', price: 2900 }, { variants: 'Pro', price: 0 },
+    { variants: 'Standard', price: 4900 }, { variants: 'Agency', price: 3900 },
+    { price: 2900 }, { variants: 'unknown' }
+  ]) {
+    assert.deepEqual(getExportEntitlements({ valid: true, ...classifyLicense(purchase) }), {
+      advanced: true, maxConversations: Infinity
+    });
+  }
+  assert.equal(classifyLicense({ variants: 'Basic (Core export)', price: 14900 }).plan, 'basic');
+  assert.deepEqual(getExportEntitlements({ valid: true, plan: 'basic' }), { advanced: false, maxConversations: Infinity });
+  assert.deepEqual(getExportEntitlements({ valid: true, tier: 'Basic ($29)' }), { advanced: true, maxConversations: Infinity });
+  assert.deepEqual(getExportEntitlements({ valid: false }), { advanced: false, maxConversations: 50 });
+  assert.deepEqual(getExportEntitlements(null, true), { advanced: true, maxConversations: 500 });
+  assert.equal(requiresAdvancedExport({ filters: { state: 'closed' } }), true);
+  assert.equal(requiresAdvancedExport({ bundleZip: true }), true);
+  assert.equal(requiresAdvancedExport({ maskPatterns: true }), true);
+  assert.equal(requiresAdvancedExport({ deepExport: true }), true);
+  assert.equal(requiresAdvancedExport({ filters: { state: '' } }), false);
 });
 
 test('a controlled pause saves settings and the next segment counts its own output', async () => {
