@@ -2,7 +2,7 @@
  * ChatVault Memory-Safe File Streamer (OOM Defense)
  * Features:
  * - Primary engine: window.showSaveFilePicker() + handle.createWritable() (FileSystemWritableFileStream)
- *   Flushes chunks directly to disk every batch (e.g. 50 conversations) so RAM usage stays flat (<30MB) even at 250,000+ conversations.
+ *   Flushes chunks directly to disk every batch (e.g. 50 conversations) when the native file picker is available.
  * - Dual fallback: Chunk array -> new Blob(chunks, { type }) -> URL.createObjectURL download when File System Access API
  *   is unsupported or when user cancels the native save picker for small/demo exports.
  */
@@ -120,6 +120,7 @@ export class FileStreamer {
         mode: this.mode,
         fileName: this.fileHandle?.name || this.suggestedName,
         bytesWritten: this.bytesWritten,
+        getFile: () => this.fileHandle.getFile(),
         blob: null
       };
     }
@@ -146,6 +147,7 @@ export class FileStreamer {
       fileName: this.suggestedName,
       bytesWritten: this.bytesWritten,
       blob,
+      getFile: () => blob,
       getText: () => this.chunks.join('')
     };
   }

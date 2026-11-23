@@ -600,6 +600,7 @@ export class IntercomAdapter {
               reason: detailResult.reason,
               timestamp: new Date().toISOString()
             });
+            options.onSkipped?.(skippedErrors.at(-1));
             continue;
           }
 
@@ -623,6 +624,7 @@ export class IntercomAdapter {
             reason: err?.message || 'Unexpected conversation fetch error',
             timestamp: new Date().toISOString()
           });
+          options.onSkipped?.(skippedErrors.at(-1));
         }
       }
 

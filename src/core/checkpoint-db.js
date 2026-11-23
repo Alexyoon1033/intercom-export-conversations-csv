@@ -73,6 +73,8 @@ export class CheckpointDB {
         : (snapshot.completedIds ? (snapshot.completedIds.length ?? snapshot.completedIds.size ?? 0) : 0),
       totalCount: typeof snapshot.totalCount === 'number' ? snapshot.totalCount : 0,
       skippedErrors: Array.isArray(snapshot.skippedErrors) ? [...snapshot.skippedErrors] : [],
+      runSettings: snapshot.runSettings || null,
+      readyToResume: Boolean(snapshot.readyToResume),
       updatedAt: new Date().toISOString()
     };
 

@@ -41,6 +41,7 @@ export async function buildExportZipBundle(options = {}) {
 
   zip.file(options.transcriptFileName || 'chatvault-transcripts.csv', options.transcriptContent || '');
   zip.file('skipped_errors.json', JSON.stringify(options.skippedErrors || [], null, 2));
+  if (options.auditText) zip.file('export_audit_report.txt', options.auditText);
 
   const downloadedAttachments = [];
   const failedAttachments = [];

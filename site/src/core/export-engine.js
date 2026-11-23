@@ -12,6 +12,8 @@ import {
   conversationToMarkdown
 } from './serializers.js';
 
+import { formatSkippedErrors, maskConversation } from './export-privacy.js';
+
 export const CHECKPOINT_BATCH_SIZE = 50;
 
 export class ExportEngine {
@@ -39,7 +41,8 @@ export class ExportEngine {
     this.checkpointId = options.checkpointId || 'active_export';
     this.filters = options.filters || {};
     this.deepExport = Boolean(options.deepExport);
-    this.bundleAttachmentsZip = Boolean(options.bundleAttachmentsZip);
+    this.maskPatterns = Boolean(options.maskPatterns);
+    this.bundleAttachmentsZip = Boolean(options.bundleAttachmentsZip) && !this.maskPatterns;
     this.fetchAttachmentFn = options.fetchAttachmentFn || (typeof fetch !== 'undefined' ? fetch.bind(globalThis) : null);
     this.onProgress = options.onProgress || (() => {});
     this.onCheckpointSaved = options.onCheckpointSaved || (() => {});
@@ -69,10 +72,15 @@ export class ExportEngine {
   async run(options = {}) {
     const resumeSnapshot = options.resumeSnapshot || null;
     const signal = options.signal || null;
+    const runSettings = options.runSettings || null;
     const triggerBrowserDownload = options.triggerBrowserDownload !== false;
     const clearCheckpointOnComplete = options.clearCheckpointOnComplete !== false;
 
     const openResult = await this.streamer.open();
+    // An incomplete segment may not be resumed after an unexpected tab close.
+    if (resumeSnapshot?.readyToResume && this.checkpointDb) {
+      await this.checkpointDb.saveCheckpoint({ ...resumeSnapshot, readyToResume: false }, this.checkpointId);
+    }
 
     // Write CSV header row with UTF-8 BOM at start of file
     if (this.format === 'csv') {
@@ -90,6 +98,11 @@ export class ExportEngine {
     let skippedErrors = Array.isArray(resumeSnapshot?.skippedErrors) ? [...resumeSnapshot.skippedErrors] : [];
     let batchCounter = 0;
     const samplePreview = [];
+    const earlierSkipped = skippedErrors;
+    const segmentErrors = [];
+    let segmentConversations = 0;
+    let segmentMessages = 0;
+    let segmentNotes = 0;
 
     const stream = this.adapter.exportStream({
       startingAfter,
@@ -97,15 +110,21 @@ export class ExportEngine {
       maxConversations: this.maxConversations,
       filters: this.filters,
       deepExport: this.deepExport,
+      onSkipped: (error) => segmentErrors.push(error),
       signal
     });
 
     const attachmentManifest = [];
 
     for await (const item of stream) {
-      const { conversation } = item;
+      const conversation = this.maskPatterns ? maskConversation(item.conversation) : item.conversation;
       const serialized = this.serializeConversation(conversation);
       await this.streamer.write(serialized);
+      segmentConversations++;
+      for (const message of conversation.messages || []) {
+        segmentMessages++;
+        if (message.isInternalNote) segmentNotes++;
+      }
 
       if (this.bundleAttachmentsZip && Array.isArray(conversation.messages)) {
         for (const msg of conversation.messages) {
@@ -125,7 +144,7 @@ export class ExportEngine {
       exportedCount = item.exportedCount;
       totalCount = item.totalCount || totalCount;
       lastCursor = item.cursor || lastCursor;
-      skippedErrors = item.skippedErrors || skippedErrors;
+      skippedErrors = [...earlierSkipped, ...(item.skippedErrors || segmentErrors)];
       batchCounter++;
 
       if (samplePreview.length < 5) {
@@ -155,7 +174,9 @@ export class ExportEngine {
               completedIds: Array.from(completedIds),
               exportedCount,
               totalCount,
-              skippedErrors
+              skippedErrors: formatSkippedErrors(skippedErrors, this.maskPatterns),
+              runSettings,
+              readyToResume: false
             },
             this.checkpointId
           );
@@ -164,6 +185,8 @@ export class ExportEngine {
         batchCounter = 0;
       }
     }
+
+    if (segmentErrors.length) skippedErrors = [...earlierSkipped, ...segmentErrors];
 
     // Final flush & close
     const closeResult = await this.streamer.close({ triggerBrowserDownload });
@@ -180,7 +203,9 @@ export class ExportEngine {
           completedIds: Array.from(completedIds),
           exportedCount,
           totalCount,
-          skippedErrors
+          skippedErrors: formatSkippedErrors(skippedErrors, this.maskPatterns),
+          runSettings,
+          readyToResume: Boolean(runSettings && !runSettings.bundleZip && (runSettings.isSandbox || runSettings.workspaceId && runSettings.workspaceId !== 'unknown'))
         },
         this.checkpointId
       );
@@ -191,6 +216,11 @@ export class ExportEngine {
 
     return {
       aborted,
+      resumed: Boolean(resumeSnapshot),
+      segmentConversations,
+      segmentMessages,
+      segmentNotes,
+      segmentSkipped: skippedErrors.length - earlierSkipped.length,
       exportedCount,
       totalCount,
       skippedErrors,
@@ -199,6 +229,7 @@ export class ExportEngine {
       fileName: closeResult.fileName,
       streamMode: closeResult.mode,
       samplePreview,
+      getFile: closeResult.getFile,
       getText: closeResult.getText
     };
   }

@@ -66,11 +66,11 @@ export function htmlToCleanText(html) {
     if (HTML_ENTITIES[lower]) return HTML_ENTITIES[lower];
     if (lower.startsWith('&#x')) {
       const code = parseInt(lower.slice(3, -1), 16);
-      return !Number.isNaN(code) ? String.fromCodePoint(code) : entity;
+      return code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : entity;
     }
     if (lower.startsWith('&#')) {
       const code = parseInt(lower.slice(2, -1), 10);
-      return !Number.isNaN(code) ? String.fromCodePoint(code) : entity;
+      return code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : entity;
     }
     return entity;
   });

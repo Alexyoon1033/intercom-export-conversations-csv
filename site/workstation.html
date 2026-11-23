@@ -158,12 +158,16 @@
 
           <div class="form-group checkbox-group">
             <label class="checkbox-label">
+              <input type="checkbox" id="maskPatternsToggle">
+              <span><strong>Mask common email, phone and card-number patterns</strong>. Omits attachments. Names, IDs and other sensitive details may remain. Review output before sharing.</span>
+            </label>
+            <label class="checkbox-label" style="margin-top:8px;">
               <input type="checkbox" id="deepExportToggle">
               <span><strong>Deep Export — Enrich contacts, companies &amp; custom attributes</strong> (calls <code>GET /contacts/{id}</code> with local cache; slower on large archives)</span>
             </label>
             <label class="checkbox-label" style="margin-top:8px;">
               <input type="checkbox" id="bundleZipToggle">
-              <span><strong>Package compressed ZIP bundle (JSZip v3.10.1 local)</strong> — bundles transcripts, <code>attachments_manifest.json</code>, optional attachment binaries, and <code>skipped_errors.json</code></span>
+              <span><strong>Package compressed ZIP bundle (JSZip v3.10.1 local)</strong> — bundles transcripts, <code>attachments_manifest.json</code>, optional attachment binaries, <code>skipped_errors.json</code>, and <code>export_audit_report.txt</code></span>
             </label>
             <label class="checkbox-label" style="margin-top:8px;">
               <input type="checkbox" id="preferDiskStreamToggle" checked>
@@ -179,6 +183,7 @@
               Pause and save checkpoint
             </button>
           </div>
+          <button id="downloadAuditBtn" class="btn btn-ghost btn-sm hidden" type="button">Download export audit</button>
           <div id="skippedErrorsDownloadWrap" class="hidden" style="margin-top:4px;">
             <button id="downloadSkippedJsonBtn" class="btn btn-ghost btn-sm" type="button" style="width:100%;">
               Download skipped_errors.json audit log
@@ -247,23 +252,23 @@
     <div id="licenseModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="licenseModalTitle">
       <div class="modal-card">
         <div class="modal-header">
-          <h2 id="licenseModalTitle">Activate Pro license key</h2>
+          <h2 id="licenseModalTitle">Activate a license key</h2>
           <button id="closeLicenseModalBtn" class="btn btn-ghost btn-sm" type="button">Close</button>
         </div>
         <div class="modal-body">
-          <p>Free mode exports up to 50 live Intercom conversations so you can verify output structure on your own workspace before buying.</p>
+          <p>Start with up to 50 live conversations. A paid key removes the trial cap. Current paid builds expose the same export controls across tiers.</p>
           <div class="pricing-tiers" style="grid-template-columns: repeat(3, 1fr);">
             <div class="tier-box">
               <h3>Basic <span class="tier-sub">($29)</span></h3>
-              <p>Full text CSV, NDJSON &amp; Markdown transcripts for 1 workspace (fast expense-limit tier).</p>
+              <p>Choose Basic for a standard export.</p>
             </div>
             <div class="tier-box">
               <h3>Pro <span class="tier-sub">($79)</span></h3>
-              <p>Search API date/tag filtering, Deep Export contact/company enrichment &amp; JSZip bundle.</p>
+              <p>Check the seller's terms before choosing a higher tier.</p>
             </div>
             <div class="tier-box">
               <h3>Agency <span class="tier-sub">($149)</span></h3>
-              <p>Unlimited client workspaces for migrations, compliance audits &amp; consulting teams.</p>
+              <p>Check client-use terms with the seller before buying for an agency.</p>
             </div>
           </div>
 

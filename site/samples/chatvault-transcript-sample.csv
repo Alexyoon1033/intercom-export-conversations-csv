@@ -1,0 +1,4 @@
+﻿conversation_id,platform,region,state,priority,created_at,updated_at,customer_id,customer_name,customer_email,companies,assignee,team_assignee,tags,first_response_sec,time_to_close_sec,custom_attributes_json,rating,rating_remark,message_count,internal_note_count,attachment_urls,title,full_transcript,internal_notes_transcript
+950001,intercom,US,closed,,,,,,,,,,SSO,,,,,,2,1,,,"Customer: SSO stopped working after our certificate rotation.
+---
+Support: We refreshed the cached certificate. Please try again.",Support: Confirm the new certificate is active before closing.

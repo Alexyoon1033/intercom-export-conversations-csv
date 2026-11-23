@@ -16,6 +16,8 @@ import { GumroadLicenseManager } from './core/gumroad-license.js';
 import { ExportEngine } from './core/export-engine.js';
 import { buildExportZipBundle } from './core/zip-packager.js';
 import { htmlToCleanText } from './core/serializers.js';
+import { createExportAudit } from './core/export-audit.js';
+import { formatSkippedErrors } from './core/export-privacy.js';
 
 const checkpointDb = new CheckpointDB();
 const licenseManager = new GumroadLicenseManager();
@@ -27,6 +29,7 @@ let currentLicenseState = {
 };
 let activeAbortController = null;
 let lastSkippedErrors = [];
+let lastAuditText = '';
 
 // DOM Elements
 const els = {
@@ -59,6 +62,8 @@ const els = {
   filterEndDate: document.getElementById('filterEndDate'),
   filterTagInput: document.getElementById('filterTagInput'),
   filterStateSelect: document.getElementById('filterStateSelect'),
+  maskPatternsToggle: document.getElementById('maskPatternsToggle'),
+  downloadAuditBtn: document.getElementById('downloadAuditBtn'),
   deepExportToggle: document.getElementById('deepExportToggle'),
   bundleZipToggle: document.getElementById('bundleZipToggle'),
   skippedErrorsDownloadWrap: document.getElementById('skippedErrorsDownloadWrap'),
@@ -118,7 +123,11 @@ async function checkExistingCheckpoint() {
     if (snap && snap.exportedCount > 0) {
       els.resumeBanner.classList.remove('hidden');
       const totalLabel = snap.totalCount ? `${snap.totalCount}` : 'unknown';
-      els.resumeBannerText.textContent = `Resume Previous Export (${snap.exportedCount.toLocaleString()} / ${totalLabel} completed • Format: ${snap.format.toUpperCase()} • Saved ${new Date(snap.updatedAt).toLocaleTimeString()})`;
+      const canResume = Boolean(snap.readyToResume && snap.runSettings);
+      els.resumeExportBtn.hidden = !canResume;
+      els.resumeBannerText.textContent = canResume
+        ? `Keep your earlier output before resuming. The remaining records go to a new file. ${snap.exportedCount.toLocaleString()} conversations processed.`
+        : 'This checkpoint does not confirm that an earlier file was saved. Restart the date range to avoid missing records.';
       els.resumeExportBtn.textContent = `Resume Previous Export (${snap.exportedCount.toLocaleString()} / ${totalLabel} completed)`;
       return snap;
     }
@@ -157,13 +166,16 @@ function renderTranscriptPreviews(conversations) {
 }
 
 async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) {
-  const format = els.exportFormatSelect.value;
-  const csvMode = els.csvModeSelect.value;
+  if (activeAbortController) return;
+  const settings = resumeSnapshot?.runSettings;
+  const format = settings?.format || els.exportFormatSelect.value;
+  const csvMode = settings?.csvMode || els.csvModeSelect.value;
   const preferDiskStream = els.preferDiskStreamToggle.checked;
-  const deepExport = Boolean(els.deepExportToggle?.checked);
-  const bundleZip = Boolean(els.bundleZipToggle?.checked);
+  const deepExport = settings?.deepExport ?? Boolean(els.deepExportToggle?.checked);
+  const bundleZip = settings?.bundleZip ?? Boolean(els.bundleZipToggle?.checked);
+  const maskPatterns = settings?.maskPatterns ?? Boolean(els.maskPatternsToggle?.checked);
 
-  const filters = {
+  const filters = settings?.filters || {
     startDate: els.filterStartDate?.value?.trim() || '',
     endDate: els.filterEndDate?.value?.trim() || '',
     tag: els.filterTagInput?.value?.trim() || '',
@@ -207,7 +219,17 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
     appendLog(`Validating Intercom workspace & starting live export (Mode: ${currentLicenseState.tier}, Format: ${format.toUpperCase()}${hasFilters ? ', Search API Filtered' : ''}${deepExport ? ', Deep Export Enriched' : ''})...`, 'info');
   }
 
+  if (settings?.maxConversations != null) maxConversations = Math.min(settings.maxConversations, maxConversations);
+  if (resumeSnapshot && resumeSnapshot.exportedCount >= maxConversations) {
+    appendLog('The current license limit has already been reached for this export.', 'warn');
+    return;
+  }
   activeAbortController = new AbortController();
+  lastAuditText = '';
+  lastSkippedErrors = [];
+  els.downloadAuditBtn.classList.add('hidden');
+  els.skippedErrorsDownloadWrap.classList.add('hidden');
+  els.transcriptPreviewContainer.replaceChildren();
   els.startLiveExportBtn.disabled = true;
   els.runSandboxDemoBtn.disabled = true;
   els.stopExportBtn.classList.remove('hidden');
@@ -219,7 +241,7 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
   const streamer = new FileStreamer({
     format,
     suggestedName,
-    preferDiskStream: bundleZip ? false : preferDiskStream
+    preferDiskStream: !bundleZip && preferDiskStream && !isSandbox
   });
 
   const engine = new ExportEngine({
@@ -231,6 +253,7 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
     maxConversations,
     filters,
     deepExport,
+    maskPatterns,
     bundleAttachmentsZip: bundleZip,
     checkpointInterval: 50,
     onProgress: ({ exportedCount, totalCount, bytesWritten, streamMode, skippedCount }) => {
@@ -252,19 +275,28 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
   });
 
   try {
-    if (!isSandbox && !resumeSnapshot) {
+    let workspaceId = '';
+    let workspaceRegion = '';
+    if (!isSandbox) {
       const info = await adapter.verifyAndDetectRegion();
-      appendLog(`Connected to ${info.workspaceName} [${info.region} Region] • Total Workspace Conversations: ${info.totalCount.toLocaleString()}`, 'success');
+      workspaceId = String(info.workspaceId);
+      workspaceRegion = info.region;
+      if (settings && (workspaceId === 'unknown' || settings.workspaceId !== workspaceId || settings.workspaceRegion !== workspaceRegion)) {
+        throw new Error('Connect the original Intercom workspace to resume this export.');
+      }
+      appendLog(`Connected to Intercom (${info.region}). Workspace count: ${info.totalCount.toLocaleString()}.`, 'success');
       els.statTotalCount.textContent = info.totalCount.toLocaleString();
     }
 
     const result = await engine.run({
       resumeSnapshot,
       signal: activeAbortController.signal,
-      triggerBrowserDownload: !bundleZip
+      triggerBrowserDownload: !bundleZip,
+      runSettings: { isSandbox, workspaceId, workspaceRegion, format, csvMode, deepExport, bundleZip, maskPatterns, filters, maxConversations }
     });
 
-    lastSkippedErrors = Array.isArray(result.skippedErrors) ? result.skippedErrors : [];
+    lastSkippedErrors = formatSkippedErrors(result.skippedErrors, maskPatterns);
+    lastAuditText = await createExportAudit(result, { sandbox: isSandbox, masked: maskPatterns });
     if (lastSkippedErrors.length > 0 && els.skippedErrorsDownloadWrap) {
       els.skippedErrorsDownloadWrap.classList.remove('hidden');
       els.downloadSkippedJsonBtn.textContent = `Download skipped_errors.json (${lastSkippedErrors.length} skipped)`;
@@ -279,10 +311,11 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
         transcriptContent: result.getText(),
         skippedErrors: lastSkippedErrors,
         attachmentManifest: result.attachmentManifest || [],
-        downloadAttachmentBinaries: deepExport && !isSandbox,
+        downloadAttachmentBinaries: deepExport && !isSandbox && !maskPatterns,
+        auditText: lastAuditText,
         metadata: {
           exportedCount: result.exportedCount,
-          filters,
+          ...(maskPatterns ? {} : { filters }),
           deepExport
         }
       });
@@ -302,25 +335,26 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
       appendLog(`Packaged JSZip bundle ${zipName} (${formatBytes(zipResult.size)}) — ${zipResult.downloadedAttachmentsCount} binaries fetched, ${lastSkippedErrors.length} skipped errors logged.`, 'success');
     }
 
+    els.downloadAuditBtn.classList.remove('hidden');
     const dot = els.rateLimitNotice.querySelector('.dot');
     if (dot) dot.className = 'dot dot-ok';
-    els.rateLimitText.textContent = 'Intercom API v2.11 Rate-Limit Monitor: Optimal (0 dropped packets)';
+    els.rateLimitText.textContent = 'Rate-limit monitor idle';
 
     renderTranscriptPreviews(result.samplePreview);
 
     if (result.aborted) {
-      appendLog(`Export paused at ${result.exportedCount} conversations. Checkpoint saved in IndexedDB for instant resume.`, 'warn');
+      appendLog(`Export paused at ${result.exportedCount} conversations. Keep the partial output before resuming.`, 'warn');
     } else {
       appendLog(
-        `Export completed! ${result.exportedCount.toLocaleString()} full conversation transcripts (${formatBytes(result.bytesWritten)}) saved${bundleZip ? ' inside local ZIP bundle' : ` to ${result.fileName} via ${result.streamMode}`}.`,
+        `Export completed! ${result.segmentConversations.toLocaleString()} conversations written in this segment (${formatBytes(result.bytesWritten)}) saved${bundleZip ? ' inside local ZIP bundle' : ` to ${result.fileName} via ${result.streamMode}`}.`,
         'success'
       );
       if (!currentLicenseState.valid && result.exportedCount >= 50 && !isSandbox) {
-        appendLog('Reached Free Mode 50-conversation cap. Activate a Pro License Key to export unlimited conversations.', 'warn');
+        appendLog('Reached Free Mode 50-conversation cap. Activate a paid license key to export unlimited conversations.', 'warn');
       }
     }
   } catch (err) {
-    appendLog(`Export error: ${err.message}`, 'error');
+    appendLog(maskPatterns ? 'Export failed. Check workspace access and try a smaller date range.' : `Export error: ${err.message}`, 'error');
   } finally {
     els.startLiveExportBtn.disabled = false;
     els.runSandboxDemoBtn.disabled = false;
@@ -411,11 +445,10 @@ async function initWorkstation() {
   // 7. Resume & Discard checkpoint buttons
   els.resumeExportBtn.addEventListener('click', async () => {
     const snap = await checkpointDb.loadCheckpoint('active_export');
-    if (!snap) return;
+    if (!snap?.readyToResume || !snap.runSettings) return;
     els.exportFormatSelect.value = snap.format || 'csv';
     els.csvModeSelect.value = snap.csvMode || 'summary';
-    const isSandbox = !els.intercomTokenInput.value.trim();
-    executeExport({ isSandbox, resumeSnapshot: snap });
+    executeExport({ isSandbox: snap.runSettings.isSandbox, resumeSnapshot: snap });
   });
 
   els.discardCheckpointBtn.addEventListener('click', async () => {
@@ -427,6 +460,20 @@ async function initWorkstation() {
   // 8. Clear log & Skipped JSON download buttons
   els.clearLogBtn.addEventListener('click', () => {
     els.activityLogBox.innerHTML = '';
+  });
+
+  els.downloadAuditBtn.addEventListener('click', () => {
+    if (!lastAuditText) return;
+    const url = URL.createObjectURL(new Blob([lastAuditText], { type: 'text/plain;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'export_audit_report.txt';
+    document.body.append(link);
+    link.click();
+    setTimeout(() => {
+      link.remove();
+      URL.revokeObjectURL(url);
+    }, 2500);
   });
 
   if (els.downloadSkippedJsonBtn) {
@@ -471,7 +518,7 @@ async function initWorkstation() {
       els.licenseVerifyMessage.className = 'status-callout status-ok';
       els.licenseVerifyMessage.textContent = `${result.reason} (${result.tier})`;
       updateLicenseBadgeUI({ ...result, maxConversations: Infinity });
-      appendLog(`Activated Pro License (${result.tier}). Unlimited export unlocked.`, 'success');
+      appendLog(`Activated license (${result.tier}). Unlimited export unlocked.`, 'success');
     } else {
       els.licenseVerifyMessage.className = 'status-callout status-err';
       els.licenseVerifyMessage.textContent = result.reason;

@@ -73,4 +73,8 @@ Intercom-Version: 2.11
 node --test tests/chatvault.test.mjs
 ```
 
+Optional pattern masking covers common email, phone and card-number patterns across exports. Masked exports omit attachments. Review the output before sharing because identifying information can remain.
+
+After an export, use **Download export audit** for per-file counts and an optional SHA-256 of the transcript. ZIPs include the audit. The browser hashes readable transcripts up to 32 MiB.
+
 The automated suite covers HTML sanitization, UTF-8 BOM, 32,000-character cell guards, US/EU/AU auto-detection, cursor pagination, HTTP 429 backoff, 404/403 skipping, Gumroad 4-fold license verification + 5xx outage grace extension, and IndexedDB checkpoint save/resume integrity.

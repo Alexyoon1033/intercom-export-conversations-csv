@@ -1,6 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
 /**
  * ChatVault Live Production Health & Launch Monitor
  * Checks all live endpoints, Gumroad License API, GitHub README, YouTube demo metadata, and SEO files.
@@ -8,8 +5,8 @@ import path from 'node:path';
  */
 
 const ENDPOINTS = [
-  { name: 'Cloudflare Landing', url: 'https://chatvault-exporter.pages.dev/', mustContain: ['ChatVault', 'ydwizzle.gumroad.com/l/intercom-exporter', '/security-factsheet'] },
-  { name: 'Cloudflare Workstation', url: 'https://chatvault-exporter.pages.dev/workstation', mustContain: ['runSandboxDemoBtn', 'filterStartDate', 'deepExportToggle', 'bundleZipToggle', 'xHRLb6ag8tx-PqVSO1E_Vw=='], checkJsUrl: 'https://chatvault-exporter.pages.dev/src/core/gumroad-license.js' },
+  { name: 'Cloudflare Landing', url: 'https://chatvault-exporter.pages.dev/', mustContain: ['ChatVault', 'ydwizzle.gumroad.com/l/intercom-exporter', 'comparisonHeading', 'costEstimate'] },
+  { name: 'Cloudflare Workstation', url: 'https://chatvault-exporter.pages.dev/workstation', mustContain: ['runSandboxDemoBtn', 'filterStartDate', 'deepExportToggle', 'bundleZipToggle', 'maskPatternsToggle', 'downloadAuditBtn', 'xHRLb6ag8tx-PqVSO1E_Vw=='], checkJsUrl: 'https://chatvault-exporter.pages.dev/src/core/gumroad-license.js' },
   { name: 'Cloudflare Security Factsheet', url: 'https://chatvault-exporter.pages.dev/security-factsheet', mustContain: ['Security &amp; Data Flow Factsheet', 'Declared Extension Host Permissions'] },
   { name: 'Cloudflare Privacy', url: 'https://chatvault-exporter.pages.dev/privacy', mustContain: ['storage', 'host_permissions'], mustNotContain: ['<li><code>downloads</code>'] },
   { name: 'Cloudflare API Guide', url: 'https://chatvault-exporter.pages.dev/guide-missing-message-text', mustContain: ['Intercom REST API v2.11', 'starting_after'] },

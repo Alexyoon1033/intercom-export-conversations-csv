@@ -2,9 +2,15 @@
 
 ## Production verification
 
-Run `node --test tests/chatvault.test.mjs` and `node scripts/healthcheck-prod.mjs` from the repository root. Check the public store version separately from submitted builds and Git tags. A synthetic demo and a public endpoint probe each validate a different part of the workflow.
+Run `node --test tests/*.test.mjs` and `node scripts/healthcheck-prod.mjs` from the repository root. Check the public store version separately from submitted builds and Git tags. A synthetic demo and a public endpoint probe each validate a different part of the workflow.
 
 For live validation, use an approved workspace and start with a small date range. Compare conversation IDs, messages, notes, and skipped records. Save and verify each segment. Time the run, record browser and API versions, and check representative long conversations and attachments. Test ZIP separately because it buffers output. Ask support only for redacted diagnostics, error codes, and version information.
+
+## First live proof
+
+Use an authorized Intercom development workspace seeded with synthetic tickets. Export up to 50 conversations through the extension. For a larger run, use an authorized paid test license. Record workspace and API versions, dates, skipped cases, message counts and checksum. Compare representative long conversations and internal notes to the source, then save each segment. Capture an English demo with tokens and personal information off-screen and identify the workspace as test data.
+
+Ask prospective users for private feedback about the setup, output and where they stop. Offer any test access without a review requirement. Store ratings and reviews must be voluntary.
 
 ## November 25 follow-up
 
