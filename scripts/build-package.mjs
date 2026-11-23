@@ -48,7 +48,8 @@ for (const file of ['manifest.json', 'background.js', 'exporter.html', 'exporter
 copyRecursive(path.join(rootDir, 'src'), path.join(stageDir, 'src'));
 copyRecursive(path.join(rootDir, 'icons'), path.join(stageDir, 'icons'));
 
-const zipPath = path.join(distDir, 'chatvault-intercom-exporter-v1.0.0.zip');
+const manifest = JSON.parse(fs.readFileSync(path.join(rootDir, 'manifest.json'), 'utf8'));
+const zipPath = path.join(distDir, `chatvault-intercom-exporter-v${manifest.version}.zip`);
 if (fs.existsSync(zipPath)) {
   fs.unlinkSync(zipPath);
 }

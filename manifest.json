@@ -2,11 +2,10 @@
   "manifest_version": 3,
   "name": "ChatVault: Conversation Transcript & CSV Exporter (for Intercom)",
   "short_name": "ChatVault Exporter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Export full conversation transcripts, replies, internal notes, and metadata to Clean CSV, JSON/NDJSON, or Markdown locally.",
   "permissions": [
-    "storage",
-    "downloads"
+    "storage"
   ],
   "host_permissions": [
     "https://api.intercom.io/*",
