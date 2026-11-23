@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatVault: Conversation Transcript &amp; CSV Exporter (for Intercom)</title>
+  <link rel="stylesheet" href="exporter.css">
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="brand-group">
+        <div class="brand-logo" aria-hidden="true">CV</div>
+        <div>
+          <h1 class="brand-title">ChatVault: Conversation Transcript &amp; CSV Exporter <span class="compat-badge">(for Intercom)</span></h1>
+          <p class="brand-subtitle">Intercom-Version: 2.11 &middot; Local Browser Execution &middot; FileSystemWritableFileStream</p>
+        </div>
+      </div>
+      <div class="license-pill-group">
+        <span id="licenseStatusBadge" class="badge badge-free">Free mode (50 transcripts)</span>
+        <button id="openLicenseModalBtn" class="btn btn-secondary btn-sm" type="button">Enter license key</button>
+      </div>
+    </header>
+
+    <!-- Resume Checkpoint Banner -->
+    <section id="resumeBanner" class="resume-banner hidden" aria-live="polite">
+      <div class="resume-info">
+        <strong>Saved checkpoint found:</strong>
+        <span id="resumeBannerText">0 / 0 conversations completed</span>
+      </div>
+      <div class="resume-actions">
+        <button id="resumeExportBtn" class="btn btn-primary btn-sm" type="button">Resume previous export</button>
+        <button id="discardCheckpointBtn" class="btn btn-ghost btn-sm" type="button">Discard checkpoint</button>
+      </div>
+    </section>
+
+    <!-- 500-Chat Interactive Sandbox Demo -->
+    <section class="sandbox-callout">
+      <div class="sandbox-copy">
+        <div class="sandbox-meta">Sandbox environment &middot; No API token required</div>
+        <h2>Run the 500-conversation interactive B2B support dataset</h2>
+        <p>Export 500 synthetic multi-turn conversations, agent replies, and internal teammate notes to verify UTF-8 BOM Excel CSV, NDJSON, and Obsidian Markdown output on your machine.</p>
+      </div>
+      <div class="sandbox-controls">
+        <button id="runSandboxDemoBtn" class="btn btn-primary" type="button">
+          Run 500-chat sandbox export
+        </button>
+        <label class="sandbox-pro-toggle">
+          <input type="checkbox" id="sandboxUnlockAllToggle" checked>
+          <span>Include all 500 demo records</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Main 2-Column Workstation Grid -->
+    <main class="workstation-grid">
+      <!-- Left Column: Connection & Output Configuration -->
+      <div class="panel-column">
+        <section class="card">
+          <div class="card-header">
+            <h2>1. Intercom API v2.11 connection</h2>
+            <button id="toggleTokenGuideBtn" class="btn btn-link" type="button">Read-only token setup (60s)</button>
+          </div>
+
+          <div id="tokenGuideBox" class="token-guide-box">
+            <h3>Create a read-only Intercom access token</h3>
+            <ol class="token-steps">
+              <li>
+                <strong>Step 1.</strong> Open <a href="https://app.intercom.com/a/apps/_/developer-hub" target="_blank" rel="noopener noreferrer">Intercom Developer Hub</a> and click <strong>New app</strong> (Internal integration).
+              </li>
+              <li>
+                <strong>Step 2.</strong> Under <strong>Authentication &rarr; Permissions</strong>, enable <strong>Read conversations</strong> and <strong>Read admins/contacts</strong>. Leave all write permissions unchecked.
+              </li>
+              <li>
+                <strong>Step 3.</strong> Copy the generated <strong>Access Token</strong> from the Authentication tab.
+              </li>
+              <li>
+                <strong>Step 4.</strong> Paste the token below and click <strong>Verify token</strong>. The token stays in your local browser memory.
+              </li>
+            </ol>
+          </div>
+
+          <div class="form-group">
+            <label for="intercomTokenInput">Intercom access token</label>
+            <div class="input-row">
+              <input type="password" id="intercomTokenInput" placeholder="dG9r..." autocomplete="off">
+              <button id="toggleTokenVisibilityBtn" class="btn btn-ghost btn-sm" type="button">Show</button>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="regionSelect">Workspace region</label>
+              <select id="regionSelect">
+                <option value="AUTO" selected>Auto-detect (US, EU, AU)</option>
+                <option value="US">US (api.intercom.io)</option>
+                <option value="EU">EU (api.eu.intercom.io)</option>
+                <option value="AU">AU (api.au.intercom.io)</option>
+              </select>
+            </div>
+            <div class="form-group verify-btn-wrap">
+              <button id="verifyTokenBtn" class="btn btn-secondary" type="button">Verify token</button>
+            </div>
+          </div>
+
+          <div id="workspaceVerifyStatus" class="status-callout hidden"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2>2. Output format and disk stream</h2>
+          </div>
+
+          <div class="form-group">
+            <label for="exportFormatSelect">Serialization format</label>
+            <select id="exportFormatSelect">
+              <option value="csv" selected>Clean CSV (.csv) with Excel UTF-8 BOM and 32,000-character cell limit</option>
+              <option value="jsonl">Structured NDJSON (.jsonl) with raw HTML and cleaned plain text</option>
+              <option value="md">Obsidian / RAG Markdown (.md) with YAML frontmatter</option>
+            </select>
+          </div>
+
+          <div id="csvModeGroup" class="form-group">
+            <label for="csvModeSelect">CSV row structure</label>
+            <select id="csvModeSelect">
+              <option value="summary" selected>Summary mode (1 row per conversation, separate internal notes column)</option>
+              <option value="detailed">Detailed mode (1 row per message part, reply, or internal note)</option>
+            </select>
+          </div>
+
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="preferDiskStreamToggle" checked>
+              <span><strong>Stream directly to disk (<code>FileSystemWritableFileStream</code>)</strong>. Flushes every 50 conversations to disk so browser memory stays below 30 MB on 100,000+ conversations. Uncheck to save directly to your default downloads folder.</span>
+            </label>
+          </div>
+
+          <div class="action-buttons-row">
+            <button id="startLiveExportBtn" class="btn btn-primary btn-lg" type="button">
+              Start live Intercom export
+            </button>
+            <button id="stopExportBtn" class="btn btn-danger btn-lg hidden" type="button">
+              Pause and save checkpoint
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Column: Telemetry & Cleaned Transcript Ledger -->
+      <div class="panel-column">
+        <section class="card telemetry-card">
+          <div class="card-header">
+            <h2>3. Extraction telemetry and rate-limit monitor</h2>
+            <span id="streamModePill" class="pill">Idle</span>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-box">
+              <span class="stat-label">Exported chats</span>
+              <strong id="statExportedCount" class="stat-value">0</strong>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Workspace total</span>
+              <strong id="statTotalCount" class="stat-value">0</strong>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Bytes written</span>
+              <strong id="statBytesWritten" class="stat-value">0 B</strong>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Skipped (404/403)</span>
+              <strong id="statSkippedCount" class="stat-value">0</strong>
+            </div>
+          </div>
+
+          <div class="progress-bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <div id="exportProgressBar" class="progress-bar-fill" style="width: 0%"></div>
+          </div>
+
+          <div id="rateLimitNotice" class="rate-limit-notice">
+            <span class="dot dot-ok"></span>
+            <span id="rateLimitText">X-RateLimit-Remaining monitor active (throttles automatically below 20 remaining calls)</span>
+          </div>
+
+          <div class="log-header">
+            <h3>Event and checkpoint log</h3>
+            <button id="clearLogBtn" class="btn btn-ghost btn-xs" type="button">Clear</button>
+          </div>
+          <div id="activityLogBox" class="activity-log-box">
+            <div class="log-entry">[System] Workstation ready. Run the 500-chat sandbox export or verify an Intercom access token.</div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2>4. Cleaned transcript ledger preview (first 3 conversations)</h2>
+          </div>
+          <div id="transcriptPreviewContainer" class="transcript-preview-container">
+            <p class="empty-preview-hint">Run the 500-chat sandbox or a live export to inspect cleaned conversation threads, internal notes, and metadata.</p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Gumroad License Modal -->
+    <div id="licenseModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="licenseModalTitle">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 id="licenseModalTitle">Activate Pro license key</h2>
+          <button id="closeLicenseModalBtn" class="btn btn-ghost btn-sm" type="button">Close</button>
+        </div>
+        <div class="modal-body">
+          <p>Free mode exports up to 50 live Intercom conversations so you can verify output structure on your own workspace before buying.</p>
+          <div class="pricing-tiers">
+            <div class="tier-box">
+              <h3>Standard <span class="tier-sub">($49 one-time)</span></h3>
+              <p>Unlimited conversation transcripts, replies, and internal notes for one Intercom workspace.</p>
+            </div>
+            <div class="tier-box">
+              <h3>Agency <span class="tier-sub">($129 one-time)</span></h3>
+              <p>Unlimited Intercom workspaces for client migrations and compliance audits.</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="gumroadLicenseInput">Gumroad license key</label>
+            <input type="text" id="gumroadLicenseInput" placeholder="XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX" autocomplete="off">
+          </div>
+
+          <div id="licenseVerifyMessage" class="status-callout hidden"></div>
+
+          <div class="modal-actions">
+            <button id="verifyLicenseBtn" class="btn btn-primary" type="button">Verify license</button>
+            <a id="buyGumroadLink" href="https://ydwizzle.gumroad.com/l/intercom-exporter" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">Purchase key on Gumroad</a>
+            <button id="deactivateLicenseBtn" class="btn btn-ghost btn-sm" type="button">Remove stored key</button>
+          </div>
+          <p class="refund-policy-note">
+            Test compatibility with the free 50-conversation live export first. If you encounter a technical defect, request a full refund within 14 days.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mandatory Trademark & Privacy Footer -->
+    <footer class="app-footer">
+      <p class="trademark-disclaimer">
+        Disclaimer: Independent third-party utility. Not affiliated with, endorsed, or sponsored by Intercom, Inc.
+      </p>
+      <p class="privacy-note">
+        100% local execution. Zero bytes of your conversations or tokens leave your browser. Direct HTTPS requests go only to <code>api.intercom.io</code> (US, EU, AU) and <code>api.gumroad.com</code>.
+        &middot; <a href="https://chatvault-exporter.pages.dev/privacy" target="_blank" rel="noopener noreferrer">Privacy policy</a>
+        &middot; <a href="https://chatvault-exporter.pages.dev/" target="_blank" rel="noopener noreferrer">Documentation</a>
+      </p>
+    </footer>
+  </div>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Why Intercom CSV Export Is Missing Message Text (And How to Export Full Transcripts Locally)</title>
+  <meta name="description" content="Technical breakdown of why Intercom's dashboard CSV export omits conversation message bodies, how REST API v2.11 N+1 cursor pagination works, and how to stream full transcripts to disk.">
+  <style>
+    body {
+      background: #0f1012;
+      color: #ededef;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.7;
+      margin: 0;
+      padding: 48px 24px;
+      -webkit-font-smoothing: antialiased;
+    }
+    article {
+      max-width: 820px;
+      margin: 0 auto;
+      background: #15171a;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 40px;
+    }
+    h1 { font-size: 28px; font-weight: 600; line-height: 1.3; color: #ededef; margin-bottom: 12px; }
+    h2 { font-size: 19px; font-weight: 600; color: #ededef; margin-top: 32px; margin-bottom: 10px; }
+    p, li { color: #a0a4ab; font-size: 15px; }
+    ul { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+    strong { color: #ededef; font-weight: 500; }
+    pre {
+      background: #111315;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', Consolas, monospace;
+      font-size: 12.5px;
+      color: #ededef;
+      margin: 16px 0;
+    }
+    code {
+      background: #1b1e22;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', Consolas, monospace;
+      font-size: 12.5px;
+      color: #ededef;
+    }
+    .callout {
+      background: #111315;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 24px 0;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      background: #ededef;
+      color: #0f1012 !important;
+      font-weight: 500;
+      font-size: 13.5px;
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      margin-top: 12px;
+    }
+    a { color: #ededef; text-underline-offset: 4px; }
+  </style>
+</head>
+<body>
+  <article>
+    <p style="font-size:12px;color:#6c7078;font-family:monospace;margin-bottom:8px;">Intercom REST API v2.11 &middot; Local CSV, NDJSON, and Markdown extraction</p>
+    <h1>Why Intercom CSV export is missing message text, and how to stream full transcripts locally</h1>
+
+    <p>When teams export conversations from Intercom's reporting dashboard for compliance archives, helpdesk migrations, or RAG datasets, the downloaded CSV only contains ticket metadata columns (conversation ID, timestamps, assignee, tag names, and SLA timers). It omits the customer messages, agent replies, and internal teammate notes.</p>
+
+    <h2>1. Why the list endpoint omits conversation threads</h2>
+    <p>In Intercom REST API v2.11, listing conversations via <code>GET /conversations?per_page=150</code> returns summary objects that only include the initial opening body. The full message thread (<code>conversation_parts.conversation_parts</code>, up to 500 parts per ticket) is a nested resource returned only when you request each conversation ID individually:</p>
+
+    <pre>GET https://api.intercom.io/conversations?per_page=150&amp;starting_after={cursor}
+Headers:
+  Authorization: Bearer &lt;READ_ONLY_TOKEN&gt;
+  Intercom-Version: 2.11
+
+# For each conversation.id in page.conversations (N+1 detail fetch):
+GET https://api.intercom.io/conversations/{id}?display_as=html</pre>
+
+    <h2>2. Four failure modes on 10,000+ conversation exports</h2>
+    <ul>
+      <li><strong>Rate-limit windows (HTTP 429).</strong> Because every page of 150 conversations requires 150 detail calls, scripts hit HTTP 429 unless they inspect <code>X-RateLimit-Remaining</code> (throttling below 20 remaining calls) and pause until the <code>X-RateLimit-Reset</code> UNIX epoch timestamp.</li>
+      <li><strong>Regional API gateways.</strong> EU and AU workspaces return <code>401 Unauthorized</code> if queried against <code>api.intercom.io</code> instead of <code>api.eu.intercom.io</code> or <code>api.au.intercom.io</code>.</li>
+      <li><strong>Browser V8 heap crashes (OOM).</strong> Concatenating 30,000+ HTML transcripts into one JavaScript string or Blob exceeds V8's UTF-16 string heap limit (~500 MB) and terminates the tab.</li>
+      <li><strong>Excel UTF-8 and 32,767-character cell overflow.</strong> Raw HTML tags (<code>&lt;p&gt;</code>, <code>&lt;br&gt;</code>) and email threads exceeding 32,767 characters corrupt rows in Microsoft Excel unless sanitized, truncated at 32,000 characters, and prefixed with a UTF-8 BOM (<code>\uFEFF</code>).</li>
+    </ul>
+
+    <h2>3. Streaming directly to disk in a dedicated browser tab</h2>
+    <p>ChatVault runs inside a dedicated browser tab using <code>FileSystemWritableFileStream</code> and 50-conversation <code>IndexedDB</code> checkpoints:</p>
+    <ul>
+      <li>Flushes every 50 conversations directly to disk so browser RAM stays under 30 MB across 250,000 conversations.</li>
+      <li>Converts HTML into clean plain text and writes Summary CSV (1 row per conversation with a separate internal notes column), Detailed CSV (1 row per message part), NDJSON (<code>.jsonl</code>), or Obsidian Markdown (<code>.md</code>).</li>
+      <li>Zero external servers. Your read-only token and customer transcripts never leave your browser.</li>
+    </ul>
+
+    <div class="callout">
+      <strong>Test the 500-conversation sandbox dataset (no API token required)</strong>
+      <p style="margin-top:6px;">Run a 500-conversation multi-turn export to Excel CSV, NDJSON, or Markdown in 3 seconds directly in your browser.</p>
+      <a href="/workstation" class="btn">Open workstation &amp; 500-chat sandbox</a>
+    </div>
+
+    <p style="margin-top:28px;font-size:12.5px;color:#6c7078;">
+      Disclaimer: Independent third-party utility. Not affiliated with, endorsed, or sponsored by Intercom, Inc. &middot; <a href="/">Home</a> &middot; <a href="/privacy">Privacy policy</a>
+    </p>
+  </article>
+</body>
+</html>

@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatVault: Conversation Transcript &amp; CSV Exporter (for Intercom)</title>
+  <meta name="description" content="Stream full Intercom conversation transcripts, customer replies, and internal notes directly to disk as Clean Excel CSV, NDJSON, or Markdown in your browser.">
+  <style>
+    :root {
+      --bg-canvas: #0f1012;
+      --bg-surface: #15171a;
+      --bg-elevated: #1b1e22;
+      --bg-control: #111315;
+      --border-hairline: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.16);
+      --text-primary: #ededef;
+      --text-secondary: #a0a4ab;
+      --text-muted: #6c7078;
+      --accent-signal: #10b981;
+      --status-warn: #eab308;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a {
+      color: var(--text-primary);
+      text-decoration: underline;
+      text-decoration-color: var(--border-strong);
+      text-underline-offset: 4px;
+      transition: color 120ms ease;
+    }
+    a:hover { color: #ffffff; }
+    code, .mono {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+    code {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12.5px;
+    }
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 32px;
+    }
+    header {
+      border-bottom: 1px solid var(--border-hairline);
+      background: var(--bg-canvas);
+    }
+    .nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      gap: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+      font-size: 15px;
+      text-decoration: none;
+    }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-size: 13.5px;
+    }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--text-secondary);
+    }
+    .nav-links a:hover { color: var(--text-primary); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 40px;
+      padding: 0 18px;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 13.5px;
+      cursor: pointer;
+      text-decoration: none !important;
+      border: 1px solid transparent;
+      transition: background-color 120ms ease, border-color 120ms ease;
+    }
+    .btn-primary {
+      background: #ededef;
+      color: #0f1012 !important;
+    }
+    .btn-primary:hover { background: #ffffff; }
+    .btn-secondary {
+      background: var(--bg-surface);
+      border-color: var(--border-strong);
+      color: var(--text-primary) !important;
+    }
+    .btn-secondary:hover { background: var(--bg-elevated); }
+
+    /* Asymmetric Split Hero */
+    .hero-split {
+      display: grid;
+      grid-template-columns: 500px 1fr;
+      gap: 48px;
+      align-items: center;
+      padding: 64px 0 56px;
+      border-bottom: 1px solid var(--border-hairline);
+    }
+    @media (max-width: 1080px) {
+      .hero-split { grid-template-columns: 1fr; }
+    }
+    .disclaimer-line {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .hero-copy h1 {
+      font-size: 36px;
+      font-weight: 600;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+    }
+    .hero-copy p {
+      font-size: 15.5px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+    .cta-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .hero-telemetry-meta {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-hairline);
+      display: flex;
+      gap: 24px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .hero-telemetry-meta strong {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* Hero Product Artifact: Live CSV & Transcript Ledger Window */
+    .artifact-window {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .artifact-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-hairline);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .status-signal {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent-signal);
+    }
+    .status-signal::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-signal);
+    }
+    .ledger-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+    .ledger-table th {
+      text-align: left;
+      padding: 10px 14px;
+      color: var(--text-muted);
+      font-weight: 500;
+      border-bottom: 1px solid var(--border-hairline);
+      background: var(--bg-control);
+    }
+    .ledger-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+      vertical-align: top;
+    }
+    .ledger-table tr:last-child td { border-bottom: none; }
+    .td-id { color: var(--text-primary); font-weight: 500; white-space: nowrap; }
+    .td-transcript { color: var(--text-primary); font-family: var(--font-sans); font-size: 12.5px; line-height: 1.45; }
+    .td-note {
+      color: #fde047;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      background: rgba(234, 179, 8, 0.06);
+      border-left: 2px solid var(--status-warn);
+      padding-left: 10px !important;
+    }
+
+    /* Varied Rhythm Architecture Section (4 compact stats + 2 asymmetric blocks) */
+    .specs-section {
+      padding: 56px 0;
+      border-bottom: 1px solid var(--border-hairline);
+    }
+    .section-head {
+      margin-bottom: 28px;
+    }
+    .section-head h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .section-head p {
+      font-size: 14.5px;
+      color: var(--text-secondary);
+    }
+    .metrics-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 860px) {
+      .metrics-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .metric-label {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .metric-figure {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 24px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .metric-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .arch-split {
+      display: grid;
+      grid-template-columns: 7fr 5fr;
+      gap: 16px;
+    }
+    @media (max-width: 860px) {
+      .arch-split { grid-template-columns: 1fr; }
+    }
+    .arch-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .arch-box h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .arch-box p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+    .arch-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13.5px;
+      color: var(--text-secondary);
+    }
+    .arch-list strong {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* Pricing Section */
+    .pricing-section {
+      padding: 56px 0;
+    }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 860px) {
+      .pricing-grid { grid-template-columns: 1fr; }
+    }
+    .pricing-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .pricing-card.featured {
+      border-color: var(--border-strong);
+      background: var(--bg-elevated);
+    }
+    .pricing-card h3 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .price-tag {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 32px;
+      font-weight: 500;
+      margin: 12px 0;
+    }
+    .price-tag span {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .tier-list {
+      list-style: none;
+      margin: 16px 0 24px;
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    footer {
+      border-top: 1px solid var(--border-hairline);
+      padding: 32px 0;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav-bar">
+      <a href="/" class="brand">
+        <span class="brand-icon">CV</span>
+        <span>ChatVault Exporter <span style="font-weight:400;color:var(--text-secondary)">(for Intercom)</span></span>
+      </a>
+      <nav class="nav-links">
+        <a href="/workstation">Web workstation &amp; 500-chat sandbox</a>
+        <a href="/guide-missing-message-text">API v2.11 technical notes</a>
+        <a href="/privacy">Privacy policy</a>
+        <a href="#pricing" class="btn btn-primary" style="height:32px;padding:0 12px;font-size:12.5px;">Get license ($49)</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Asymmetric Split Hero with Live Transcript Ledger Artifact -->
+    <section class="hero-split">
+      <div class="hero-copy">
+        <div class="disclaimer-line">
+          Independent third-party utility. Not affiliated with Intercom, Inc.
+        </div>
+        <h1>Stream full Intercom conversation transcripts and internal notes directly to disk</h1>
+        <p>Intercom’s reporting CSV only exports ticket metadata columns without message text. ChatVault iterates through REST API v2.11 cursor pagination inside a dedicated local browser tab and writes clean Excel CSV, NDJSON, or Markdown directly to your drive.</p>
+        <div class="cta-row">
+          <a href="/workstation" class="btn btn-primary">Open workstation &amp; 500-chat sandbox</a>
+          <a href="#pricing" class="btn btn-secondary">View one-time licensing</a>
+        </div>
+        <div class="hero-telemetry-meta">
+          <span>RAM ceiling: <strong>&lt;30 MB at 100k chats</strong></span>
+          <span>Checkpoints: <strong>Every 50 chats</strong></span>
+          <span>Backend servers: <strong>0 bytes</strong></span>
+        </div>
+      </div>
+
+      <div class="artifact-window">
+        <div class="artifact-bar">
+          <span>chatvault-intercom-transcripts-2026-11-22.csv (UTF-8 BOM &middot; Summary Mode)</span>
+          <span class="status-signal">FileSystemWritableFileStream active</span>
+        </div>
+        <table class="ledger-table">
+          <thead>
+            <tr>
+              <th>conversation_id</th>
+              <th>region / state</th>
+              <th>full_transcript (HTML stripped)</th>
+              <th>internal_notes_transcript</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="td-id">#950001</td>
+              <td>EU &middot; closed<br><span style="color:var(--text-muted)">sso-saml</span></td>
+              <td class="td-transcript">
+                <strong>Elena Rostova:</strong> Rotated our Okta signing cert this morning; 45 EU users hit SAML_SIGNATURE_MISMATCH.<br>
+                <strong>Sarah Jenkins:</strong> Flushed cached X.509 thumbprint on SAML gateway. Please test IdP login.
+              </td>
+              <td class="td-note">
+                <strong>[Note] Sarah Jenkins:</strong> Tenant eu-west-8841 cached old SHA-1 cert. Cleared Redis SAML key.
+              </td>
+            </tr>
+            <tr>
+              <td class="td-id">#950002</td>
+              <td>US &middot; closed<br><span style="color:var(--text-muted)">api-v2</span></td>
+              <td class="td-transcript">
+                <strong>Marcus Vance:</strong> How many times does your webhook dispatcher retry on HTTP 502 during deploys?<br>
+                <strong>David Kim:</strong> Exponential backoff runs 7 retries over 6 hours (1m, 5m, 15m, 30m, 1h, 2h, 2h).
+              </td>
+              <td class="td-note">
+                <strong>[Note] David Kim:</strong> Checked Growth Annual workspace #4491 telemetry. 0 dropped events in 24h.
+              </td>
+            </tr>
+            <tr>
+              <td class="td-id">#950003</td>
+              <td>EU &middot; open<br><span style="color:var(--text-muted)">eu-vat</span></td>
+              <td class="td-transcript">
+                <strong>Ji-Hoon Park:</strong> Please add EU VAT ID SK2020998877 to invoice #INV-2026-1104 (한국어 UTF-8 테스트).<br>
+                <strong>Alex Rivera:</strong> Validated VIES VAT number and reissued #INV-2026-1104-REV1 at 0% reverse charge.
+              </td>
+              <td class="td-note">
+                <strong>[Note] Alex Rivera:</strong> VIES check passed. Updated Stripe Billing customer tax ID permanently.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Varied Rhythm Engineering Specs -->
+    <section class="specs-section">
+      <div class="section-head">
+        <h2>Engineered for 100,000+ conversation archives</h2>
+        <p>Built on standard Web APIs to avoid MV3 service worker timeouts, V8 heap crashes, and HTTP 429 bans.</p>
+      </div>
+
+      <div class="metrics-strip">
+        <div class="metric-card">
+          <div class="metric-label">Conversation parts per ticket</div>
+          <div class="metric-figure">Up to 500</div>
+          <div class="metric-sub">Fetched via N+1 GET /conversations/{id}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Disk flush interval</div>
+          <div class="metric-figure">50 chats</div>
+          <div class="metric-sub">Constant &lt;30 MB V8 heap footprint</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Excel cell safety limit</div>
+          <div class="metric-figure">32,000 chars</div>
+          <div class="metric-sub">Prevents 32,767-char row overflow</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Rate-limit guard threshold</div>
+          <div class="metric-figure">&lt; 20 calls</div>
+          <div class="metric-sub">Auto-pauses until X-RateLimit-Reset</div>
+        </div>
+      </div>
+
+      <div class="arch-split">
+        <div class="arch-box">
+          <h3>Direct-to-disk streaming and IndexedDB checkpoints</h3>
+          <p>Concatenating 50,000 HTML conversations into a single JavaScript string or Blob crashes browser tabs at the 500 MB UTF-16 string limit. ChatVault opens a native <code>FileSystemWritableFileStream</code> handle and flushes batches to disk every 50 conversations.</p>
+          <ul class="arch-list">
+            <li><strong>IndexedDB cursor persistence.</strong> Every 50 conversations, ChatVault records the active <code>starting_after</code> cursor and completed conversation IDs. Interrupted runs resume from the exact ticket.</li>
+            <li><strong>Fault-tolerant 404/403 skipping.</strong> Deleted or restricted tickets mid-batch are logged in <code>skipped_errors</code> without halting a multi-hour export.</li>
+          </ul>
+        </div>
+        <div class="arch-box">
+          <h3>Multi-region detection and 3 output schemas</h3>
+          <p>Automatically probes US (<code>api.intercom.io</code>), EU (<code>api.eu.intercom.io</code>), and AU (<code>api.au.intercom.io</code>) endpoints with a read-only token.</p>
+          <ul class="arch-list">
+            <li><strong>Clean Excel CSV (.csv).</strong> UTF-8 BOM (<code>\uFEFF</code>), RFC 4180 quote escaping, HTML tag stripping, and Summary or Detailed row granularity.</li>
+            <li><strong>Structured NDJSON (.jsonl).</strong> Preserves raw HTML alongside cleaned plain text for BigQuery, Snowflake, or LLM fine-tuning.</li>
+            <li><strong>Obsidian / RAG Markdown (.md).</strong> YAML frontmatter with threaded dialogue and internal note callouts.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="pricing-section">
+      <div class="section-head">
+        <h2>One-time licensing</h2>
+        <p>Test compatibility with your own Intercom workspace using the free 50-conversation export before purchasing.</p>
+      </div>
+
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <div>
+            <h3>Free tier &amp; 500-chat sandbox</h3>
+            <div class="price-tag">$0 <span>/ forever</span></div>
+            <ul class="tier-list">
+              <li>Full 500-chat interactive B2B sandbox dataset</li>
+              <li>Export up to 50 live Intercom conversations with full message text</li>
+              <li>Clean CSV (Summary and Detailed), NDJSON, and Markdown</li>
+              <li>US, EU, and AU region auto-detection</li>
+            </ul>
+          </div>
+          <a href="/workstation" class="btn btn-secondary">Launch workstation</a>
+        </div>
+
+        <div class="pricing-card featured">
+          <div>
+            <h3>Standard license</h3>
+            <div class="price-tag">$49 <span>/ one-time</span></div>
+            <ul class="tier-list">
+              <li>Unlimited conversation transcripts and internal notes for 1 workspace</li>
+              <li>Direct-to-disk FileSystemWritableFileStream streaming</li>
+              <li>50-chat IndexedDB checkpoint and resume</li>
+              <li>14-day refund guarantee for technical defects</li>
+            </ul>
+          </div>
+          <a href="https://ydwizzle.gumroad.com/l/intercom-exporter?option=0" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Buy Standard license ($49)</a>
+        </div>
+
+        <div class="pricing-card">
+          <div>
+            <h3>Agency license</h3>
+            <div class="price-tag">$129 <span>/ one-time</span></div>
+            <ul class="tier-list">
+              <li>Unlimited Intercom workspaces for agencies and client migrations</li>
+              <li>All Standard features for helpdesk and RAG migrations</li>
+              <li>Offline 7-day license cache with automatic 5xx grace extension</li>
+              <li>14-day refund guarantee for technical defects</li>
+            </ul>
+          </div>
+          <a href="https://ydwizzle.gumroad.com/l/intercom-exporter?option=1" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">Buy Agency license ($129)</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="container">
+    <span>Disclaimer: Independent third-party utility. Not affiliated with, endorsed, or sponsored by Intercom, Inc.</span>
+    <span>
+      <a href="/privacy">Privacy policy</a> &middot;
+      <a href="/guide-missing-message-text">API v2.11 technical guide</a> &middot;
+      <a href="/workstation">Web workstation</a>
+    </span>
+  </footer>
+</body>
+</html>

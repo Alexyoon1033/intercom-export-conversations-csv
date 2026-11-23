@@ -1,0 +1,312 @@
+﻿conversation_id,platform,region,state,priority,created_at,updated_at,customer_id,customer_name,customer_email,assignee,tags,rating,rating_remark,message_count,internal_note_count,attachment_urls,title,full_transcript,internal_notes_transcript
+950001,intercom,US,closed,not_priority,2026-10-01T09:00:00.000Z,2026-10-01T09:35:00.000Z,usr_70001,Marcus Vance (Northstar FinTech),marcus.vance@northstarhq.com,David Kim (Solutions Engineer),api-v2; webhooks; developer; batch-1,5,"Fast, technical, and accurate resolution!",4,1,,[Northstar FinTech] Webhook payload retry policy & HTTP 429 rate limit clarification (#1),"[2026-10-01T09:00:00.000Z] Marcus Vance: Hello,
+
+Our ingestion worker occasionally returns HTTP 502 during deployment windows. How many times does your webhook dispatcher retry before marking an endpoint disabled?
+---
+[2026-10-01T09:12:00.000Z] David Kim (Solutions Engineer): Great question! Our webhook delivery engine uses exponential backoff up to 7 retries over 6 hours (1m, 5m, 15m, 30m, 1h, 2h, 2h).
+
+You can inspect delivery attempts in Developer Hub &rarr; Webhooks (https://developers.example.com/webhooks).
+---
+[2026-10-01T09:28:00.000Z] Marcus Vance: That 6-hour window easily covers our 90-second rolling deploys. Appreciate the clear documentation link!
+---
+[2026-10-01T09:35:00.000Z] David Kim (Solutions Engineer): Anytime! Let us know if you need webhook signature verification examples in Node.js or Python.",[2026-10-01T09:05:00.000Z] David Kim (Solutions Engineer): Customer is on the Growth Annual plan (Workspace #4491). Checking webhook telemetry logs — 0 dropped events in the last 24h.
+950002,intercom,US,open,not_priority,2026-10-01T10:00:00.000Z,2026-10-01T10:35:00.000Z,usr_70002,Ji-Hoon Park (Veloce Logistics),ji.hoon.park@velocelogistics.eu,Alex Rivera (Billing & Ops),billing; eu-vat; invoice; batch-1,5,"Fast, technical, and accurate resolution!",4,1,,[Veloce Logistics] Annual invoice VAT reverse-charge update (Slovakia / EU VAT ID) (#2),"[2026-10-01T10:00:00.000Z] Ji-Hoon Park: Dobrý deň / Hello,
+
+Could you please add our EU VAT ID (SK2020998877) to invoice #INV-2026-1104 and reissue it under the EU reverse-charge mechanism?
+
+Also testing multi-language UTF-8 characters for Excel CSV export: 한국어 상담 내역 정상 출력 테스트 / Slovenčina / 日本語.
+---
+[2026-10-01T10:12:00.000Z] Alex Rivera (Billing & Ops): Hello! We have validated your VIES VAT number and reissued invoice #INV-2026-1104-REV1 with 0% VAT (EU Reverse Charge applied).
+
+The updated PDF is attached below for your accounting records.
+---
+[2026-10-01T10:28:00.000Z] Ji-Hoon Park: Received the updated PDF and forwarded it to our finance team. All set!
+---
+[2026-10-01T10:35:00.000Z] Alex Rivera (Billing & Ops): Wonderful — your VAT ID is now permanently saved for all future renewals.",[2026-10-01T10:05:00.000Z] Alex Rivera (Billing & Ops): Verified VIES VAT number validity. Preparing revised zero-rated reverse-charge PDF invoice in Stripe Billing.
+950003,intercom,EU,closed,priority,2026-10-01T11:00:00.000Z,2026-10-01T11:35:00.000Z,usr_70003,Sophie Laurent (Kinetix AI Labs),sophie.laurent@kinetix.ai,Clara Rossi (Customer Success),data-export; csv; compliance-audit; batch-1,5,"Fast, technical, and accurate resolution!",4,1,https://files.example.com/tickets/950003/revised-config.json,[Kinetix AI Labs] CSV export truncating at 300 rows & missing full conversation transcript bodies (#3),"[2026-10-01T11:00:00.000Z] Sophie Laurent: We need to export 18,400 customer support conversations including full message text and internal notes for our Q4 SOC2 & RAG AI training audit.
+
+The built-in dashboard CSV export only gives metadata columns (no message bodies!) and caps UI searches. How can we get a clean CSV with every reply?
+---
+[2026-10-01T11:12:00.000Z] Clara Rossi (Customer Success): Because each conversation contains up to 500 nested conversation_parts, full transcript extraction requires iterating through the REST API v2.11 with cursor pagination (starting_after) and streaming directly to disk.
+---
+[2026-10-01T11:28:00.000Z] Sophie Laurent: Using ChatVault Exporter in a dedicated tab streamed all 18,400 transcripts directly to disk with <30MB RAM and preserved UTF-8 BOM for Excel. Problem solved!
+---
+[2026-10-01T11:35:00.000Z] Clara Rossi (Customer Success): Awesome to hear! Enjoy the clean CSV, NDJSON, and Obsidian Markdown outputs.",[2026-10-01T11:05:00.000Z] Clara Rossi (Customer Success): Standard UI export only exports ticket metadata. Recommending the local API v2.11 cursor pagination & N+1 transcript streamer workflow.
+950004,intercom,US,closed,priority,2026-10-01T12:00:00.000Z,2026-10-01T12:35:00.000Z,usr_70004,Liam O’Connor (BluePeak Health),liam.o.connor@bluepeakhealth.org,Sarah Jenkins (Tier-2 Support),sso-saml; enterprise; security; batch-1,5,"Fast, technical, and accurate resolution!",4,1,https://files.example.com/tickets/950004/diagnostic-log.txt,[BluePeak Health] SSO SAML 2.0 assertion error after Okta certificate rotation (#4),"[2026-10-01T12:00:00.000Z] Liam O’Connor: Hi Support Team,
+
+We rotated our Okta signing certificate this morning and now 45 users in our EU workspace are getting SAML_SIGNATURE_MISMATCH when logging in.
+
+Here is our metadata reference: Okta SAML Metadata (https://status.example.com/sso-guide).
+Can you help us verify the fingerprint urgently?
+---
+[2026-10-01T12:12:00.000Z] Sarah Jenkins (Tier-2 Support): Hi there! Thanks for reaching out.
+
+I located your workspace and flushed the cached X.509 certificate fingerprint on our SAML gateway. Could you please ask one affected user to test an IdP-initiated login now?
+
+• Clear browser session cookies
+• Re-launch from Okta tile
+---
+[2026-10-01T12:28:00.000Z] Liam O’Connor: Tested with 3 engineers across Frankfurt and Dublin — login works immediately now! Thank you for the fast turnaround.
+---
+[2026-10-01T12:35:00.000Z] Sarah Jenkins (Tier-2 Support): Glad to hear everyone is back in! I have also enabled automatic metadata polling for your tenant so future certificate rotations sync seamlessly.",[2026-10-01T12:05:00.000Z] Sarah Jenkins (Tier-2 Support): [Internal Escalation Note] Checked tenant ID eu-west-8841. Their cached X.509 cert still points to the old SHA-1 thumbprint. Flushing Redis SAML cache now.
+950005,intercom,US,closed,not_priority,2026-10-01T13:00:00.000Z,2026-10-01T13:35:00.000Z,usr_70005,Priya Nair (Synthetix Data),priya.nair@synthetixdata.co,David Kim (Solutions Engineer),api-v2; webhooks; developer; batch-1,4,"Fast, technical, and accurate resolution!",4,1,,[Synthetix Data] Webhook payload retry policy & HTTP 429 rate limit clarification (#5),"[2026-10-01T13:00:00.000Z] Priya Nair: Hello,
+
+Our ingestion worker occasionally returns HTTP 502 during deployment windows. How many times does your webhook dispatcher retry before marking an endpoint disabled?
+---
+[2026-10-01T13:12:00.000Z] David Kim (Solutions Engineer): Great question! Our webhook delivery engine uses exponential backoff up to 7 retries over 6 hours (1m, 5m, 15m, 30m, 1h, 2h, 2h).
+
+You can inspect delivery attempts in Developer Hub &rarr; Webhooks (https://developers.example.com/webhooks).
+---
+[2026-10-01T13:28:00.000Z] Priya Nair: That 6-hour window easily covers our 90-second rolling deploys. Appreciate the clear documentation link!
+---
+[2026-10-01T13:35:00.000Z] David Kim (Solutions Engineer): Anytime! Let us know if you need webhook signature verification examples in Node.js or Python.",[2026-10-01T13:05:00.000Z] David Kim (Solutions Engineer): Customer is on the Growth Annual plan (Workspace #4491). Checking webhook telemetry logs — 0 dropped events in the last 24h.
+950006,intercom,EU,open,not_priority,2026-10-01T14:00:00.000Z,2026-10-01T14:35:00.000Z,usr_70006,Tobias Lindqvist (Aurum Payments),tobias.lindqvist@aurumpay.com,Alex Rivera (Billing & Ops),billing; eu-vat; invoice; batch-1,5,"Fast, technical, and accurate resolution!",4,1,https://files.example.com/tickets/950006/revised-config.json,[Aurum Payments] Annual invoice VAT reverse-charge update (Slovakia / EU VAT ID) (#6),"[2026-10-01T14:00:00.000Z] Tobias Lindqvist: Dobrý deň / Hello,
+
+Could you please add our EU VAT ID (SK2020998877) to invoice #INV-2026-1104 and reissue it under the EU reverse-charge mechanism?
+
+Also testing multi-language UTF-8 characters for Excel CSV export: 한국어 상담 내역 정상 출력 테스트 / Slovenčina / 日本語.
+---
+[2026-10-01T14:12:00.000Z] Alex Rivera (Billing & Ops): Hello! We have validated your VIES VAT number and reissued invoice #INV-2026-1104-REV1 with 0% VAT (EU Reverse Charge applied).
+
+The updated PDF is attached below for your accounting records.
+---
+[2026-10-01T14:28:00.000Z] Tobias Lindqvist: Received the updated PDF and forwarded it to our finance team. All set!
+---
+[2026-10-01T14:35:00.000Z] Alex Rivera (Billing & Ops): Wonderful — your VAT ID is now permanently saved for all future renewals.",[2026-10-01T14:05:00.000Z] Alex Rivera (Billing & Ops): Verified VIES VAT number validity. Preparing revised zero-rated reverse-charge PDF invoice in Stripe Billing.
+950007,intercom,AU,closed,priority,2026-10-01T15:00:00.000Z,2026-10-01T15:35:00.000Z,usr_70007,Hannah Abbott (Stratos DevTools),hannah.abbott@stratos.dev,Clara Rossi (Customer Success),data-export; csv; compliance-audit; batch-1,5,"Fast, technical, and accurate resolution!",4,1,,[Stratos DevTools] CSV export truncating at 300 rows & missing full conversation transcript bodies (#7),"[2026-10-01T15:00:00.000Z] Hannah Abbott: We need to export 18,400 customer support conversations including full message text and internal notes for our Q4 SOC2 & RAG AI training audit.
+
+The built-in dashboard CSV export only gives metadata columns (no message bodies!) and caps UI searches. How can we get a clean CSV with every reply?
+---
+[2026-10-01T15:12:00.000Z] Clara Rossi (Customer Success): Because each conversation contains up to 500 nested conversation_parts, full transcript extraction requires iterating through the REST API v2.11 with cursor pagination (starting_after) and streaming directly to disk.
+---
+[2026-10-01T15:28:00.000Z] Hannah Abbott: Using ChatVault Exporter in a dedicated tab streamed all 18,400 transcripts directly to disk with <30MB RAM and preserved UTF-8 BOM for Excel. Problem solved!
+---
+[2026-10-01T15:35:00.000Z] Clara Rossi (Customer Success): Awesome to hear! Enjoy the clean CSV, NDJSON, and Obsidian Markdown outputs.",[2026-10-01T15:05:00.000Z] Clara Rossi (Customer Success): Standard UI export only exports ticket metadata. Recommending the local API v2.11 cursor pagination & N+1 transcript streamer workflow.
+950008,intercom,US,closed,priority,2026-10-01T16:00:00.000Z,2026-10-01T16:35:00.000Z,usr_70008,Elena Rostova (Acme Cloud Ops),elena.rostova@acmecloud.io,Sarah Jenkins (Tier-2 Support),sso-saml; enterprise; security; batch-1,5,"Fast, technical, and accurate resolution!",4,1,https://files.example.com/tickets/950008/diagnostic-log.txt,[Acme Cloud Ops] SSO SAML 2.0 assertion error after Okta certificate rotation (#8),"[2026-10-01T16:00:00.000Z] Elena Rostova: Hi Support Team,
+
+We rotated our Okta signing certificate this morning and now 45 users in our EU workspace are getting SAML_SIGNATURE_MISMATCH when logging in.
+
+Here is our metadata reference: Okta SAML Metadata (https://status.example.com/sso-guide).
+Can you help us verify the fingerprint urgently?
+---
+[2026-10-01T16:12:00.000Z] Sarah Jenkins (Tier-2 Support): Hi there! Thanks for reaching out.
+
+I located your workspace and flushed the cached X.509 certificate fingerprint on our SAML gateway. Could you please ask one affected user to test an IdP-initiated login now?
+
+• Clear browser session cookies
+• Re-launch from Okta tile
+---
+[2026-10-01T16:28:00.000Z] Elena Rostova: Tested with 3 engineers across Frankfurt and Dublin — login works immediately now! Thank you for the fast turnaround.
+---
+[2026-10-01T16:35:00.000Z] Sarah Jenkins (Tier-2 Support): Glad to hear everyone is back in! I have also enabled automatic metadata polling for your tenant so future certificate rotations sync seamlessly.",[2026-10-01T16:05:00.000Z] Sarah Jenkins (Tier-2 Support): [Internal Escalation Note] Checked tenant ID eu-west-8841. Their cached X.509 cert still points to the old SHA-1 thumbprint. Flushing Redis SAML cache now.
+950009,intercom,EU,closed,not_priority,2026-10-01T17:00:00.000Z,2026-10-01T17:35:00.000Z,usr_70009,Marcus Vance (Northstar FinTech),marcus.vance@northstarhq.com,David Kim (Solutions Engineer),api-v2; webhooks; developer; batch-1,5,"Fast, technical, and accurate resolution!",4,1,https://files.example.com/tickets/950009/revised-config.json,[Northstar FinTech] Webhook payload retry policy & HTTP 429 rate limit clarification (#9),"[2026-10-01T17:00:00.000Z] Marcus Vance: Hello,
+
+Our ingestion worker occasionally returns HTTP 502 during deployment windows. How many times does your webhook dispatcher retry before marking an endpoint disabled?
+---
+[2026-10-01T17:12:00.000Z] David Kim (Solutions Engineer): Great question! Our webhook delivery engine uses exponential backoff up to 7 retries over 6 hours (1m, 5m, 15m, 30m, 1h, 2h, 2h).
+
+You can inspect delivery attempts in Developer Hub &rarr; Webhooks (https://developers.example.com/webhooks).
+---
+[2026-10-01T17:28:00.000Z] Marcus Vance: That 6-hour window easily covers our 90-second rolling deploys. Appreciate the clear documentation link!
+---
+[2026-10-01T17:35:00.000Z] David Kim (Solutions Engineer): Anytime! Let us know if you need webhook signature verification examples in Node.js or Python.",[2026-10-01T17:05:00.000Z] David Kim (Solutions Engineer): Customer is on the Growth Annual plan (Workspace #4491). Checking webhook telemetry logs — 0 dropped events in the last 24h.
+950010,intercom,US,open,not_priority,2026-10-01T18:00:00.000Z,2026-10-01T18:35:00.000Z,usr_70010,Ji-Hoon Park (Veloce Logistics),ji.hoon.park@velocelogistics.eu,Alex Rivera (Billing & Ops),billing; eu-vat; invoice; batch-1,4,"Fast, technical, and accurate resolution!",4,1,,[Veloce Logistics] Annual invoice VAT reverse-charge update (Slovakia / EU VAT ID) (#10),"[2026-10-01T18:00:00.000Z] Ji-Hoon Park: Dobrý deň / Hello,
+
+Could you please add our EU VAT ID (SK2020998877) to invoice #INV-2026-1104 and reissue it under the EU reverse-charge mechanism?
+
+Also testing multi-language UTF-8 characters for Excel CSV export: 한국어 상담 내역 정상 출력 테스트 / Slovenčina / 日本語.
+---
+[2026-10-01T18:12:00.000Z] Alex Rivera (Billing & Ops): Hello! We have validated your VIES VAT number and reissued invoice #INV-2026-1104-REV1 with 0% VAT (EU Reverse Charge applied).
+
+The updated PDF is attached below for your accounting records.
+---
+[2026-10-01T18:28:00.000Z] Ji-Hoon Park: Received the updated PDF and forwarded it to our finance team. All set!
+---
+[2026-10-01T18:35:00.000Z] Alex Rivera (Billing & Ops): Wonderful — your VAT ID is now permanently saved for all future renewals.",[2026-10-01T18:05:00.000Z] Alex Rivera (Billing & Ops): Verified VIES VAT number validity. Preparing revised zero-rated reverse-charge PDF invoice in Stripe Billing.
+950011,intercom,US,closed,priority,2026-10-01T19:00:00.000Z,2026-10-01T19:35:00.000Z,usr_70011,Sophie Laurent (Kinetix AI Labs),sophie.laurent@kinetix.ai,Clara Rossi (Customer Success),data-export; csv; compliance-audit; batch-1,5,"Fast, technical, and accurate resolution!",4,1,,[Kinetix AI Labs] CSV export truncating at 300 rows & missing full conversation transcript bodies (#11),"[2026-10-01T19:00:00.000Z] Sophie Laurent: We need to export 18,400 customer support conversations including full message text and internal notes for our Q4 SOC2 & RAG AI training audit.
+
+The built-in dashboard CSV export only gives metadata columns (no message bodies!) and caps UI searches. How can we get a clean CSV with every reply?
+---
+[2026-10-01T19:12:00.000Z] Clara Rossi (Customer Success): Because each conversation contains up to 500 nested conversation_parts, full transcript extraction requires iterating through the REST API v2.11 with cursor pagination (starting_after) and streaming directly to disk.
+---
+[2026-10-01T19:28:00.000Z] Sophie Laurent: Using ChatVault Exporter in a dedicated tab streamed all 18,400 transcripts directly to disk with <30MB RAM and preserved UTF-8 BOM for Excel. Problem solved!
+---
+[2026-10-01T19:35:00.000Z] Clara Rossi (Customer Success): Awesome to hear! Enjoy the clean CSV, NDJSON, and Obsidian Markdown outputs.",[2026-10-01T19:05:00.000Z] Clara Rossi (Customer Success): Standard UI export only exports ticket metadata. Recommending the local API v2.11 cursor pagination & N+1 transcript streamer workflow.
+950012,intercom,EU,closed,priority,2026-10-01T20:00:00.000Z,2026-10-01T20:35:00.000Z,usr_70012,Liam O’Connor (BluePeak Health),liam.o.connor@bluepeakhealth.org,Sarah Jenkins (Tier-2 Support),sso-saml; enterprise; security; batch-1,5,"Fast, technical, and accurate resolution!",4,1,https://files.example.com/tickets/950012/diagnostic-log.txt; https://files.example.com/tickets/950012/revised-config.json,[BluePeak Health] SSO SAML 2.0 assertion error after Okta certificate rotation (#12),"[2026-10-01T20:00:00.000Z] Liam O’Connor: Hi Support Team,
+
+We rotated our Okta signing certificate this morning and now 45 users in our EU workspace are getting SAML_SIGNATURE_MISMATCH when logging in.
+
+Here is our metadata reference: Okta SAML Metadata (https://status.example.com/sso-guide).
+Can you help us verify the fingerprint urgently?
+---
+[2026-10-01T20:12:00.000Z] Sarah Jenkins (Tier-2 Support): Hi there! Thanks for reaching out.
+
+I located your workspace and flushed the cached X.509 certificate fingerprint on our SAML gateway. Could you please ask one affected user to test an IdP-initiated login now?
+
+• Clear browser session cookies
+• Re-launch from Okta tile
+---
+[2026-10-01T20:28:00.000Z] Liam O’Connor: Tested with 3 engineers across Frankfurt and Dublin — login works immediately now! Thank you for the fast turnaround.
+---
+[2026-10-01T20:35:00.000Z] Sarah Jenkins (Tier-2 Support): Glad to hear everyone is back in! I have also enabled automatic metadata polling for your tenant so future certificate rotations sync seamlessly.",[2026-10-01T20:05:00.000Z] Sarah Jenkins (Tier-2 Support): [Internal Escalation Note] Checked tenant ID eu-west-8841. Their cached X.509 cert still points to the old SHA-1 thumbprint. Flushing Redis SAML cache now.
+950013,intercom,US,closed,not_priority,2026-10-01T21:00:00.000Z,2026-10-01T21:35:00.000Z,usr_70013,Priya Nair (Synthetix Data),priya.nair@synthetixdata.co,David Kim (Solutions Engineer),api-v2; webhooks; developer; batch-1,5,"Fast, technical, and accurate resolution!",4,1,,[Synthetix Data] Webhook payload retry policy & HTTP 429 rate limit clarification (#13),"[2026-10-01T21:00:00.000Z] Priya Nair: Hello,
+
+Our ingestion worker occasionally returns HTTP 502 during deployment windows. How many times does your webhook dispatcher retry before marking an endpoint disabled?
+---
+[2026-10-01T21:12:00.000Z] David Kim (Solutions Engineer): Great question! Our webhook delivery engine uses exponential backoff up to 7 retries over 6 hours (1m, 5m, 15m, 30m, 1h, 2h, 2h).
+
+You can inspect delivery attempts in Developer Hub &rarr; Webhooks (https://developers.example.com/webhooks).
+---
+[2026-10-01T21:28:00.000Z] Priya Nair: That 6-hour window easily covers our 90-second rolling deploys. Appreciate the clear documentation link!
+---
+[2026-10-01T21:35:00.000Z] David Kim (Solutions Engineer): Anytime! Let us know if you need webhook signature verification examples in Node.js or Python.",[2026-10-01T21:05:00.000Z] David Kim (Solutions Engineer): Customer is on the Growth Annual plan (Workspace #4491). Checking webhook telemetry logs — 0 dropped events in the last 24h.
+950014,intercom,AU,open,not_priority,2026-10-01T22:00:00.000Z,2026-10-01T22:35:00.000Z,usr_70014,Tobias Lindqvist (Aurum Payments),tobias.lindqvist@aurumpay.com,Alex Rivera (Billing & Ops),billing; eu-vat; invoice; batch-1,5,"Fast, technical, and accurate resolution!",4,1,,[Aurum Payments] Annual invoice VAT reverse-charge update (Slovakia / EU VAT ID) (#14),"[2026-10-01T22:00:00.000Z] Tobias Lindqvist: Dobrý deň / Hello,
+
+Could you please add our EU VAT ID (SK2020998877) to invoice #INV-2026-1104 and reissue it under the EU reverse-charge mechanism?
+
+Also testing multi-language UTF-8 characters for Excel CSV export: 한국어 상담 내역 정상 출력 테스트 / Slovenčina / 日本語.
+---
+[2026-10-01T22:12:00.000Z] Alex Rivera (Billing & Ops): Hello! We have validated your VIES VAT number and reissued invoice #INV-2026-1104-REV1 with 0% VAT (EU Reverse Charge applied).
+
+The updated PDF is attached below for your accounting records.
+---
+[2026-10-01T22:28:00.000Z] Tobias Lindqvist: Received the updated PDF and forwarded it to our finance team. All set!
+---
+[2026-10-01T22:35:00.000Z] Alex Rivera (Billing & Ops): Wonderful — your VAT ID is now permanently saved for all future renewals.",[2026-10-01T22:05:00.000Z] Alex Rivera (Billing & Ops): Verified VIES VAT number validity. Preparing revised zero-rated reverse-charge PDF invoice in Stripe Billing.
+950015,intercom,EU,closed,priority,2026-10-01T23:00:00.000Z,2026-10-01T23:35:00.000Z,usr_70015,Hannah Abbott (Stratos DevTools),hannah.abbott@stratos.dev,Clara Rossi (Customer Success),data-export; csv; compliance-audit; batch-1,4,"Fast, technical, and accurate resolution!",4,1,https://files.example.com/tickets/950015/revised-config.json,[Stratos DevTools] CSV export truncating at 300 rows & missing full conversation transcript bodies (#15),"[2026-10-01T23:00:00.000Z] Hannah Abbott: We need to export 18,400 customer support conversations including full message text and internal notes for our Q4 SOC2 & RAG AI training audit.
+
+The built-in dashboard CSV export only gives metadata columns (no message bodies!) and caps UI searches. How can we get a clean CSV with every reply?
+---
+[2026-10-01T23:12:00.000Z] Clara Rossi (Customer Success): Because each conversation contains up to 500 nested conversation_parts, full transcript extraction requires iterating through the REST API v2.11 with cursor pagination (starting_after) and streaming directly to disk.
+---
+[2026-10-01T23:28:00.000Z] Hannah Abbott: Using ChatVault Exporter in a dedicated tab streamed all 18,400 transcripts directly to disk with <30MB RAM and preserved UTF-8 BOM for Excel. Problem solved!
+---
+[2026-10-01T23:35:00.000Z] Clara Rossi (Customer Success): Awesome to hear! Enjoy the clean CSV, NDJSON, and Obsidian Markdown outputs.",[2026-10-01T23:05:00.000Z] Clara Rossi (Customer Success): Standard UI export only exports ticket metadata. Recommending the local API v2.11 cursor pagination & N+1 transcript streamer workflow.
+950016,intercom,US,closed,priority,2026-10-02T00:00:00.000Z,2026-10-02T00:35:00.000Z,usr_70016,Elena Rostova (Acme Cloud Ops),elena.rostova@acmecloud.io,Sarah Jenkins (Tier-2 Support),sso-saml; enterprise; security; batch-1,5,"Fast, technical, and accurate resolution!",4,1,https://files.example.com/tickets/950016/diagnostic-log.txt,[Acme Cloud Ops] SSO SAML 2.0 assertion error after Okta certificate rotation (#16),"[2026-10-02T00:00:00.000Z] Elena Rostova: Hi Support Team,
+
+We rotated our Okta signing certificate this morning and now 45 users in our EU workspace are getting SAML_SIGNATURE_MISMATCH when logging in.
+
+Here is our metadata reference: Okta SAML Metadata (https://status.example.com/sso-guide).
+Can you help us verify the fingerprint urgently?
+---
+[2026-10-02T00:12:00.000Z] Sarah Jenkins (Tier-2 Support): Hi there! Thanks for reaching out.
+
+I located your workspace and flushed the cached X.509 certificate fingerprint on our SAML gateway. Could you please ask one affected user to test an IdP-initiated login now?
+
+• Clear browser session cookies
+• Re-launch from Okta tile
+---
+[2026-10-02T00:28:00.000Z] Elena Rostova: Tested with 3 engineers across Frankfurt and Dublin — login works immediately now! Thank you for the fast turnaround.
+---
+[2026-10-02T00:35:00.000Z] Sarah Jenkins (Tier-2 Support): Glad to hear everyone is back in! I have also enabled automatic metadata polling for your tenant so future certificate rotations sync seamlessly.",[2026-10-02T00:05:00.000Z] Sarah Jenkins (Tier-2 Support): [Internal Escalation Note] Checked tenant ID eu-west-8841. Their cached X.509 cert still points to the old SHA-1 thumbprint. Flushing Redis SAML cache now.
+950017,intercom,US,closed,not_priority,2026-10-02T01:00:00.000Z,2026-10-02T01:35:00.000Z,usr_70017,Marcus Vance (Northstar FinTech),marcus.vance@northstarhq.com,David Kim (Solutions Engineer),api-v2; webhooks; developer; batch-1,5,"Fast, technical, and accurate resolution!",4,1,,[Northstar FinTech] Webhook payload retry policy & HTTP 429 rate limit clarification (#17),"[2026-10-02T01:00:00.000Z] Marcus Vance: Hello,
+
+Our ingestion worker occasionally returns HTTP 502 during deployment windows. How many times does your webhook dispatcher retry before marking an endpoint disabled?
+---
+[2026-10-02T01:12:00.000Z] David Kim (Solutions Engineer): Great question! Our webhook delivery engine uses exponential backoff up to 7 retries over 6 hours (1m, 5m, 15m, 30m, 1h, 2h, 2h).
+
+You can inspect delivery attempts in Developer Hub &rarr; Webhooks (https://developers.example.com/webhooks).
+---
+[2026-10-02T01:28:00.000Z] Marcus Vance: That 6-hour window easily covers our 90-second rolling deploys. Appreciate the clear documentation link!
+---
+[2026-10-02T01:35:00.000Z] David Kim (Solutions Engineer): Anytime! Let us know if you need webhook signature verification examples in Node.js or Python.",[2026-10-02T01:05:00.000Z] David Kim (Solutions Engineer): Customer is on the Growth Annual plan (Workspace #4491). Checking webhook telemetry logs — 0 dropped events in the last 24h.
+950018,intercom,EU,open,not_priority,2026-10-02T02:00:00.000Z,2026-10-02T02:35:00.000Z,usr_70018,Ji-Hoon Park (Veloce Logistics),ji.hoon.park@velocelogistics.eu,Alex Rivera (Billing & Ops),billing; eu-vat; invoice; batch-1,5,"Fast, technical, and accurate resolution!",4,1,https://files.example.com/tickets/950018/revised-config.json,[Veloce Logistics] Annual invoice VAT reverse-charge update (Slovakia / EU VAT ID) (#18),"[2026-10-02T02:00:00.000Z] Ji-Hoon Park: Dobrý deň / Hello,
+
+Could you please add our EU VAT ID (SK2020998877) to invoice #INV-2026-1104 and reissue it under the EU reverse-charge mechanism?
+
+Also testing multi-language UTF-8 characters for Excel CSV export: 한국어 상담 내역 정상 출력 테스트 / Slovenčina / 日本語.
+---
+[2026-10-02T02:12:00.000Z] Alex Rivera (Billing & Ops): Hello! We have validated your VIES VAT number and reissued invoice #INV-2026-1104-REV1 with 0% VAT (EU Reverse Charge applied).
+
+The updated PDF is attached below for your accounting records.
+---
+[2026-10-02T02:28:00.000Z] Ji-Hoon Park: Received the updated PDF and forwarded it to our finance team. All set!
+---
+[2026-10-02T02:35:00.000Z] Alex Rivera (Billing & Ops): Wonderful — your VAT ID is now permanently saved for all future renewals.",[2026-10-02T02:05:00.000Z] Alex Rivera (Billing & Ops): Verified VIES VAT number validity. Preparing revised zero-rated reverse-charge PDF invoice in Stripe Billing.
+950019,intercom,US,closed,priority,2026-10-02T03:00:00.000Z,2026-10-02T03:35:00.000Z,usr_70019,Sophie Laurent (Kinetix AI Labs),sophie.laurent@kinetix.ai,Clara Rossi (Customer Success),data-export; csv; compliance-audit; batch-1,5,"Fast, technical, and accurate resolution!",4,1,,[Kinetix AI Labs] CSV export truncating at 300 rows & missing full conversation transcript bodies (#19),"[2026-10-02T03:00:00.000Z] Sophie Laurent: We need to export 18,400 customer support conversations including full message text and internal notes for our Q4 SOC2 & RAG AI training audit.
+
+The built-in dashboard CSV export only gives metadata columns (no message bodies!) and caps UI searches. How can we get a clean CSV with every reply?
+---
+[2026-10-02T03:12:00.000Z] Clara Rossi (Customer Success): Because each conversation contains up to 500 nested conversation_parts, full transcript extraction requires iterating through the REST API v2.11 with cursor pagination (starting_after) and streaming directly to disk.
+---
+[2026-10-02T03:28:00.000Z] Sophie Laurent: Using ChatVault Exporter in a dedicated tab streamed all 18,400 transcripts directly to disk with <30MB RAM and preserved UTF-8 BOM for Excel. Problem solved!
+---
+[2026-10-02T03:35:00.000Z] Clara Rossi (Customer Success): Awesome to hear! Enjoy the clean CSV, NDJSON, and Obsidian Markdown outputs.",[2026-10-02T03:05:00.000Z] Clara Rossi (Customer Success): Standard UI export only exports ticket metadata. Recommending the local API v2.11 cursor pagination & N+1 transcript streamer workflow.
+950020,intercom,US,closed,priority,2026-10-02T04:00:00.000Z,2026-10-02T04:35:00.000Z,usr_70020,Liam O’Connor (BluePeak Health),liam.o.connor@bluepeakhealth.org,Sarah Jenkins (Tier-2 Support),sso-saml; enterprise; security; batch-1,4,"Fast, technical, and accurate resolution!",4,1,https://files.example.com/tickets/950020/diagnostic-log.txt,[BluePeak Health] SSO SAML 2.0 assertion error after Okta certificate rotation (#20),"[2026-10-02T04:00:00.000Z] Liam O’Connor: Hi Support Team,
+
+We rotated our Okta signing certificate this morning and now 45 users in our EU workspace are getting SAML_SIGNATURE_MISMATCH when logging in.
+
+Here is our metadata reference: Okta SAML Metadata (https://status.example.com/sso-guide).
+Can you help us verify the fingerprint urgently?
+---
+[2026-10-02T04:12:00.000Z] Sarah Jenkins (Tier-2 Support): Hi there! Thanks for reaching out.
+
+I located your workspace and flushed the cached X.509 certificate fingerprint on our SAML gateway. Could you please ask one affected user to test an IdP-initiated login now?
+
+• Clear browser session cookies
+• Re-launch from Okta tile
+---
+[2026-10-02T04:28:00.000Z] Liam O’Connor: Tested with 3 engineers across Frankfurt and Dublin — login works immediately now! Thank you for the fast turnaround.
+---
+[2026-10-02T04:35:00.000Z] Sarah Jenkins (Tier-2 Support): Glad to hear everyone is back in! I have also enabled automatic metadata polling for your tenant so future certificate rotations sync seamlessly.",[2026-10-02T04:05:00.000Z] Sarah Jenkins (Tier-2 Support): [Internal Escalation Note] Checked tenant ID eu-west-8841. Their cached X.509 cert still points to the old SHA-1 thumbprint. Flushing Redis SAML cache now.
+950021,intercom,EU,closed,not_priority,2026-10-02T05:00:00.000Z,2026-10-02T05:35:00.000Z,usr_70021,Priya Nair (Synthetix Data),priya.nair@synthetixdata.co,David Kim (Solutions Engineer),api-v2; webhooks; developer; batch-1,5,"Fast, technical, and accurate resolution!",4,1,https://files.example.com/tickets/950021/revised-config.json,[Synthetix Data] Webhook payload retry policy & HTTP 429 rate limit clarification (#21),"[2026-10-02T05:00:00.000Z] Priya Nair: Hello,
+
+Our ingestion worker occasionally returns HTTP 502 during deployment windows. How many times does your webhook dispatcher retry before marking an endpoint disabled?
+---
+[2026-10-02T05:12:00.000Z] David Kim (Solutions Engineer): Great question! Our webhook delivery engine uses exponential backoff up to 7 retries over 6 hours (1m, 5m, 15m, 30m, 1h, 2h, 2h).
+
+You can inspect delivery attempts in Developer Hub &rarr; Webhooks (https://developers.example.com/webhooks).
+---
+[2026-10-02T05:28:00.000Z] Priya Nair: That 6-hour window easily covers our 90-second rolling deploys. Appreciate the clear documentation link!
+---
+[2026-10-02T05:35:00.000Z] David Kim (Solutions Engineer): Anytime! Let us know if you need webhook signature verification examples in Node.js or Python.",[2026-10-02T05:05:00.000Z] David Kim (Solutions Engineer): Customer is on the Growth Annual plan (Workspace #4491). Checking webhook telemetry logs — 0 dropped events in the last 24h.
+950022,intercom,US,open,not_priority,2026-10-02T06:00:00.000Z,2026-10-02T06:35:00.000Z,usr_70022,Tobias Lindqvist (Aurum Payments),tobias.lindqvist@aurumpay.com,Alex Rivera (Billing & Ops),billing; eu-vat; invoice; batch-1,5,"Fast, technical, and accurate resolution!",4,1,,[Aurum Payments] Annual invoice VAT reverse-charge update (Slovakia / EU VAT ID) (#22),"[2026-10-02T06:00:00.000Z] Tobias Lindqvist: Dobrý deň / Hello,
+
+Could you please add our EU VAT ID (SK2020998877) to invoice #INV-2026-1104 and reissue it under the EU reverse-charge mechanism?
+
+Also testing multi-language UTF-8 characters for Excel CSV export: 한국어 상담 내역 정상 출력 테스트 / Slovenčina / 日本語.
+---
+[2026-10-02T06:12:00.000Z] Alex Rivera (Billing & Ops): Hello! We have validated your VIES VAT number and reissued invoice #INV-2026-1104-REV1 with 0% VAT (EU Reverse Charge applied).
+
+The updated PDF is attached below for your accounting records.
+---
+[2026-10-02T06:28:00.000Z] Tobias Lindqvist: Received the updated PDF and forwarded it to our finance team. All set!
+---
+[2026-10-02T06:35:00.000Z] Alex Rivera (Billing & Ops): Wonderful — your VAT ID is now permanently saved for all future renewals.",[2026-10-02T06:05:00.000Z] Alex Rivera (Billing & Ops): Verified VIES VAT number validity. Preparing revised zero-rated reverse-charge PDF invoice in Stripe Billing.
+950023,intercom,US,closed,priority,2026-10-02T07:00:00.000Z,2026-10-02T07:35:00.000Z,usr_70023,Hannah Abbott (Stratos DevTools),hannah.abbott@stratos.dev,Clara Rossi (Customer Success),data-export; csv; compliance-audit; batch-1,5,"Fast, technical, and accurate resolution!",4,1,,[Stratos DevTools] CSV export truncating at 300 rows & missing full conversation transcript bodies (#23),"[2026-10-02T07:00:00.000Z] Hannah Abbott: We need to export 18,400 customer support conversations including full message text and internal notes for our Q4 SOC2 & RAG AI training audit.
+
+The built-in dashboard CSV export only gives metadata columns (no message bodies!) and caps UI searches. How can we get a clean CSV with every reply?
+---
+[2026-10-02T07:12:00.000Z] Clara Rossi (Customer Success): Because each conversation contains up to 500 nested conversation_parts, full transcript extraction requires iterating through the REST API v2.11 with cursor pagination (starting_after) and streaming directly to disk.
+---
+[2026-10-02T07:28:00.000Z] Hannah Abbott: Using ChatVault Exporter in a dedicated tab streamed all 18,400 transcripts directly to disk with <30MB RAM and preserved UTF-8 BOM for Excel. Problem solved!
+---
+[2026-10-02T07:35:00.000Z] Clara Rossi (Customer Success): Awesome to hear! Enjoy the clean CSV, NDJSON, and Obsidian Markdown outputs.",[2026-10-02T07:05:00.000Z] Clara Rossi (Customer Success): Standard UI export only exports ticket metadata. Recommending the local API v2.11 cursor pagination & N+1 transcript streamer workflow.
+950024,intercom,EU,closed,priority,2026-10-02T08:00:00.000Z,2026-10-02T08:35:00.000Z,usr_70024,Elena Rostova (Acme Cloud Ops),elena.rostova@acmecloud.io,Sarah Jenkins (Tier-2 Support),sso-saml; enterprise; security; batch-1,5,"Fast, technical, and accurate resolution!",4,1,https://files.example.com/tickets/950024/diagnostic-log.txt; https://files.example.com/tickets/950024/revised-config.json,[Acme Cloud Ops] SSO SAML 2.0 assertion error after Okta certificate rotation (#24),"[2026-10-02T08:00:00.000Z] Elena Rostova: Hi Support Team,
+
+We rotated our Okta signing certificate this morning and now 45 users in our EU workspace are getting SAML_SIGNATURE_MISMATCH when logging in.
+
+Here is our metadata reference: Okta SAML Metadata (https://status.example.com/sso-guide).
+Can you help us verify the fingerprint urgently?
+---
+[2026-10-02T08:12:00.000Z] Sarah Jenkins (Tier-2 Support): Hi there! Thanks for reaching out.
+
+I located your workspace and flushed the cached X.509 certificate fingerprint on our SAML gateway. Could you please ask one affected user to test an IdP-initiated login now?
+
+• Clear browser session cookies
+• Re-launch from Okta tile
+---
+[2026-10-02T08:28:00.000Z] Elena Rostova: Tested with 3 engineers across Frankfurt and Dublin — login works immediately now! Thank you for the fast turnaround.
+---
+[2026-10-02T08:35:00.000Z] Sarah Jenkins (Tier-2 Support): Glad to hear everyone is back in! I have also enabled automatic metadata polling for your tenant so future certificate rotations sync seamlessly.",[2026-10-02T08:05:00.000Z] Sarah Jenkins (Tier-2 Support): [Internal Escalation Note] Checked tenant ID eu-west-8841. Their cached X.509 cert still points to the old SHA-1 thumbprint. Flushing Redis SAML cache now.
+950025,intercom,US,closed,not_priority,2026-10-02T09:00:00.000Z,2026-10-02T09:35:00.000Z,usr_70025,Marcus Vance (Northstar FinTech),marcus.vance@northstarhq.com,David Kim (Solutions Engineer),api-v2; webhooks; developer; batch-1,4,"Fast, technical, and accurate resolution!",4,1,,[Northstar FinTech] Webhook payload retry policy & HTTP 429 rate limit clarification (#25),"[2026-10-02T09:00:00.000Z] Marcus Vance: Hello,
+
+Our ingestion worker occasionally returns HTTP 502 during deployment windows. How many times does your webhook dispatcher retry before marking an endpoint disabled?
+---
+[2026-10-02T09:12:00.000Z] David Kim (Solutions Engineer): Great question! Our webhook delivery engine uses exponential backoff up to 7 retries over 6 hours (1m, 5m, 15m, 30m, 1h, 2h, 2h).
+
+You can inspect delivery attempts in Developer Hub &rarr; Webhooks (https://developers.example.com/webhooks).
+---
+[2026-10-02T09:28:00.000Z] Marcus Vance: That 6-hour window easily covers our 90-second rolling deploys. Appreciate the clear documentation link!
+---
+[2026-10-02T09:35:00.000Z] David Kim (Solutions Engineer): Anytime! Let us know if you need webhook signature verification examples in Node.js or Python.",[2026-10-02T09:05:00.000Z] David Kim (Solutions Engineer): Customer is on the Growth Annual plan (Workspace #4491). Checking webhook telemetry logs — 0 dropped events in the last 24h.
