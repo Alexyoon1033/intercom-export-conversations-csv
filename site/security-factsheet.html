@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Security &amp; Privacy Architecture Factsheet — ChatVault (for Intercom)</title>
-  <meta name="description" content="One-page B2B InfoSec & GDPR/CCPA Architecture Factsheet for ChatVault: Conversation Transcript & CSV Exporter (for Intercom).">
+  <meta name="description" content="Browser data flow and permissions factsheet for ChatVault: Conversation Transcript & CSV Exporter (for Intercom).">
   <style>
     :root {
       --bg: #0f1012;
@@ -115,15 +115,15 @@
   <div class="sheet">
     <div class="top-bar">
       <div>
-        <h1>Security &amp; Zero-Data Architecture Factsheet</h1>
+        <h1>Security &amp; Data Flow Factsheet</h1>
         <div class="meta">Product: ChatVault: Conversation Transcript &amp; CSV Exporter (for Intercom) &middot; Version 1.2.0 &middot; Document Date: Nov 2026</div>
       </div>
       <button class="btn-print" onclick="window.print()" type="button">Save / Print as PDF</button>
     </div>
 
     <div class="summary-box">
-      <strong>GDPR / CCPA Executive Summary for InfoSec &amp; Procurement Teams:</strong><br>
-      ChatVault is a <strong>100% client-side, zero-backend browser utility</strong>. It runs strictly inside the employee's local Chromium browser and streams exported transcripts directly to the user's local hard drive via <code>FileSystemWritableFileStream</code>. Because the vendor operates <strong>zero backend servers</strong> and never receives, stores, proxies, or accesses any Intercom tokens or customer PII, ChatVault does not act as a Data Processor or Sub-processor under GDPR Art. 28 or CCPA.
+      <strong>Browser data flow for security and procurement review</strong><br>
+      ChatVault processes transcripts in Chromium and writes them locally. Authenticated export requests go directly to Intercom. Gumroad handles purchases and license verification. Review these data flows under your organization’s security and privacy requirements.
     </div>
 
     <h2>1. Technical Architecture &amp; Network Boundaries (Enforced by Chrome MV3 Sandbox)</h2>
@@ -133,26 +133,26 @@
         <td><code>["storage"]</code> only (1 minimal permission; no <code>tabs</code>, <code>activeTab</code>, <code>scripting</code>, <code>cookies</code>, or <code>&lt;all_urls&gt;</code>).</td>
       </tr>
       <tr>
-        <th>Allowed Host Permissions (Strict Egress Allowlist)</th>
+        <th>Declared Extension Host Permissions</th>
         <td>
           <code>https://api.intercom.io/*</code> (US Workspace API)<br>
           <code>https://api.eu.intercom.io/*</code> (EU Workspace API)<br>
           <code>https://api.au.intercom.io/*</code> (AU Workspace API)<br>
           <code>https://api.gumroad.com/*</code> (License Key Verification Only)<br>
-          <em>The Chromium MV3 sandbox structurally blocks outbound requests to any other domain.</em>
+          <em>These permissions describe privileged extension access. Optional attachment retrieval can contact the host of an attachment URL.</em>
         </td>
       </tr>
       <tr>
         <th>Vendor Backend / Telemetry Servers</th>
-        <td><strong>None (0 bytes transmitted).</strong> No analytics SDKs, no crash reporters, no remote code execution.</td>
+        <td>Developer-operated transcript ingestion and analytics are absent from the exporter. The public website is hosted on Cloudflare Pages.</td>
       </tr>
       <tr>
         <th>Intercom Token Scope Required</th>
-        <td><strong>Read-Only Internal Integration Token</strong> (<code>Read conversations</code>, <code>Read contacts</code>, <code>Read admins</code>). All write scopes remain unchecked. Token stays in volatile browser memory and is never persisted to remote servers.</td>
+        <td><strong>Read-Only Internal Integration Token</strong> for the authorized workspace. Enable conversation read access for export and contact read access if using contact enrichment. The browser sends the token directly to Intercom.</td>
       </tr>
       <tr>
         <th>Local Persistence</th>
-        <td>Only pagination checkpoints (<code>IndexedDB</code>) and license verification timestamp (<code>chrome.storage.local</code>), both clearable in one click inside the workstation UI.</td>
+        <td>Pagination and completed IDs are stored in <code>IndexedDB</code>. The key, purchase email, sale ID and verification timestamps are cached locally. The workstation lets the user clear each.</td>
       </tr>
       <tr>
         <th>Open Auditability</th>
@@ -163,7 +163,7 @@
     <h2>2. Data Flow Verification (Zero Intermediaries)</h2>
     <ul>
       <li><strong>Step 1 (Read):</strong> Employee's browser sends authenticated HTTPS GET/POST requests directly to official Intercom regional API gateways (<code>Intercom-Version: 2.11</code>).</li>
-      <li><strong>Step 2 (Transform):</strong> HTML stripping, Excel UTF-8 BOM formatting, 32,000-character cell protection, and optional ZIP packaging occur locally in the employee's browser RAM (<code>&lt;30 MB</code> ceiling via 50-chat disk flushes).</li>
+      <li><strong>Step 2 (Transform):</strong> HTML stripping, Excel UTF-8 BOM formatting, 32,000-character cell protection, and optional ZIP packaging occur locally in the employee's browser. ZIP output buffers content in memory.</li>
       <li><strong>Step 3 (Write):</strong> Clean <code>.csv</code>, <code>.jsonl</code>, <code>.md</code>, or <code>.zip</code> output is written directly to the employee's local corporate disk.</li>
     </ul>
 

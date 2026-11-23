@@ -1,42 +1,18 @@
-# Organic Community & Migration Traffic Playbook (Non-Spam, High-Intent)
+# ChatVault community outreach
 
-> **Golden Rule:** Never drop bare promo links on Reddit (`r/SaaS`, `r/CustomerSuccess`) or Quora where spam filters immediately shadowban or auto-collapse posts. Always lead with a **complete, genuinely helpful technical answer** explaining Intercom REST API v2.11 (`N+1` `conversation_parts`, `POST /conversations/search` filters, `X-RateLimit-Remaining` header backoff), and include only **1 plain reference link** to the open technical guide (`https://github.com/Alexyoon1033/intercom-export-conversations-csv`) or Security Factsheet (`https://chatvault-exporter.pages.dev/security-factsheet`).
+Look for recent, unresolved questions where the tool fits. Search `export Intercom history`, `Intercom CSV missing text`, `migrating off Intercom`, and `Intercom export limit` across the Intercom and Zendesk communities, Reddit including r/Zendesk, Stack Overflow, X, and Quora. Use six months as a discovery filter and check each community's rules.
 
----
+Distinguish local archives, destination imports, and continuous sync. The recent [Intercom full export request](https://community.intercom.com/ideas/feature-request-full-data-and-metadata-export-for-conversations-including-exporting-event-logs-across-all-15894) includes event logs across all channels. Record it as product research.
 
-## Target Communities & High-Intent Search Queries
+Answer the technical question with enough detail to stand alone. If a product reference directly helps and the community allows it, disclose the affiliation and link to the relevant public guide or listing. Avoid unsolicited messages, repeated templates, invented firsthand experience, unsupported open-source claims, and checkout links. See [Stack Overflow promotion guidance](https://stackoverflow.com/help/promotion) and [Reddit spam policy](https://support.reddithelp.com/hc/en-us/articles/360043504051-Spam).
 
-1. **Intercom Community Forum (`community.intercom.com`)**
-   - Queries: `"export full conversations csv"`, `"export message text"`, `"csv missing body"`, `"export internal notes"`
-2. **Zendesk / Help Scout / HubSpot Community Forums**
-   - Queries: `"migrating from intercom"`, `"export intercom history before canceling"`, `"intercom backup csv"`
-3. **StackOverflow (`stackoverflow.com`)**
-   - Queries: `[intercom] export conversations csv`, `[intercom] conversation_parts missing`
-4. **IndieHackers / Hacker News ("Ask HN") / SaaS Ops Slack Communities**
-   - Queries: `"intercom pricing increase alternative"`, `"leaving intercom backup"`
+## Draft for a question about missing message text
 
----
+Intercom's reporting CSV gives you conversation metadata. For message bodies and replies, retrieve each conversation by ID with the API and read the opening message and conversation parts. Check pagination for your API version and separate internal notes from customer-visible messages. Intercom's Inbox PDF or text export may be enough for a small archive. Before migrating, check the fields and formats accepted by the destination.
 
-## Copy-Paste Technical Answer Templates (Zero-Spam, Engineer-to-Engineer Tone)
+- [Intercom export options](https://www.intercom.com/help/en/articles/2046229-export-your-conversations-data)
+- [Intercom conversation retrieval](https://developers.intercom.com/docs/references/rest-api/api.intercom.io/conversations/retrieveconversation)
 
-### Template 1: For "Why is Intercom's CSV export missing message text / internal notes?"
-```text
-Intercom's reporting CSV only exports ticket-level metadata because in REST API v2.11, the list endpoint (`GET /conversations?per_page=150`) only returns the opening `source.body`. Every customer reply, agent message, and internal note (`part_type: "note"`) lives inside `conversation_parts` (up to 500 parts per ticket) and requires an N+1 detail fetch (`GET /conversations/{id}?display_as=html`).
+Optional disclosure where allowed. "I'm affiliated with ChatVault. Our public guide shows example files and the API workflow. The demo uses synthetic records. A free export of up to 50 conversations from your own workspace requires the extension and an approved token." Link to the [public guide](https://github.com/Alexyoon1033/intercom-export-conversations-csv).
 
-If you only need a specific date window or tag (instead of dumping 50k+ old tickets), route through `POST /conversations/search` with `created_at` epoch timestamps and `tag_ids`, then monitor `X-RateLimit-Remaining` (pause when `< 20` until `X-RateLimit-Reset`) so you don't get hit with HTTP 429 bans.
-
-We documented the exact API v2.11 N+1 query payloads, rate-limit logic, and sample UTF-8 BOM CSV / NDJSON / Markdown outputs in this open guide (plus a 100% browser-local extractor with a free 50-chat export and 500-chat sandbox if you'd rather not maintain a script):
-https://github.com/Alexyoon1033/intercom-export-conversations-csv
-```
-
-### Template 2: For "Migrating off Intercom (to Zendesk / Help Scout / Crisp) on a budget"
-```text
-If you don't want to pay $200-$500+ for an automated migration service just to archive your old Intercom history before canceling, you can pull your entire archive locally via Intercom API v2.11 using a read-only Internal Integration token (`Read conversations` + `Read contacts`).
-
-Two pitfalls to watch out for if you script it yourself:
-1. EU and AU workspaces return 401 against `api.intercom.io` — you must target `api.eu.intercom.io` or `api.au.intercom.io`.
-2. Excel breaks rows if a long email thread cell exceeds 32,767 characters or lacks a UTF-8 BOM (`\uFEFF`), and concatenating 30k+ conversations in memory will OOM a browser tab unless you stream batches directly to disk.
-
-Here is the open API v2.11 architecture breakdown + sample CSV/Markdown files (and a local browser tool with Search API date/tag filtering, IndexedDB resume checkpoints, and a 1-page GDPR Zero-Data Security Factsheet for InfoSec sign-off):
-https://github.com/Alexyoon1033/intercom-export-conversations-csv
-```
+Track visits, demo starts, genuine purchases, successful live exports, refunds, and support time where available. Report test orders separately.

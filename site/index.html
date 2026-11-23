@@ -413,12 +413,12 @@
         <p>Intercom’s reporting CSV only exports ticket metadata columns without message text. ChatVault iterates through REST API v2.11 cursor pagination inside a dedicated local browser tab and writes clean Excel CSV, NDJSON, or Markdown directly to your drive.</p>
         <div class="cta-row">
           <a href="/workstation" class="btn btn-primary">Open workstation &amp; 500-chat sandbox</a>
-          <a href="/security-factsheet" class="btn btn-secondary">Security &amp; GDPR factsheet (PDF)</a>
+          <a href="/security-factsheet" class="btn btn-secondary">Security factsheet</a>
         </div>
         <div class="hero-telemetry-meta">
-          <span>RAM ceiling: <strong>&lt;30 MB at 100k chats</strong></span>
+          <span>Output: <strong>Disk streaming option</strong></span>
           <span>Checkpoints: <strong>Every 50 chats</strong></span>
-          <span>Backend servers: <strong>0 bytes</strong></span>
+          <span>Transcript processing: <strong>Local browser</strong></span>
         </div>
       </div>
 
@@ -478,8 +478,8 @@
     <!-- Varied Rhythm Engineering Specs -->
     <section class="specs-section">
       <div class="section-head">
-        <h2>Engineered for 100,000+ conversation archives</h2>
-        <p>Built on standard Web APIs to avoid MV3 service worker timeouts, V8 heap crashes, and HTTP 429 bans.</p>
+        <h2>Export options for conversation archives</h2>
+        <p>The extension tab handles pagination, rate-limit waits, and file output. For larger jobs, select disk streaming and split the export into date ranges.</p>
       </div>
 
       <div class="metrics-strip">
@@ -491,12 +491,12 @@
         <div class="metric-card">
           <div class="metric-label">Disk flush interval</div>
           <div class="metric-figure">50 chats</div>
-          <div class="metric-sub">Constant &lt;30 MB V8 heap footprint</div>
+          <div class="metric-sub">When native disk output is active</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">Excel cell safety limit</div>
           <div class="metric-figure">32,000 chars</div>
-          <div class="metric-sub">Prevents 32,767-char row overflow</div>
+          <div class="metric-sub">Long cells are truncated and marked</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">Rate-limit guard threshold</div>
@@ -508,9 +508,9 @@
       <div class="arch-split">
         <div class="arch-box">
           <h3>Direct-to-disk streaming and IndexedDB checkpoints</h3>
-          <p>Concatenating 50,000 HTML conversations into a single JavaScript string or Blob crashes browser tabs at the 500 MB UTF-16 string limit. ChatVault opens a native <code>FileSystemWritableFileStream</code> handle and flushes batches to disk every 50 conversations.</p>
+          <p>Native disk streaming writes batches of 50 conversations. Blob downloads and ZIP bundling buffer data in memory. Use smaller date ranges when working with large transcripts or attachments.</p>
           <ul class="arch-list">
-            <li><strong>IndexedDB cursor persistence.</strong> Every 50 conversations, ChatVault records the active <code>starting_after</code> cursor and completed conversation IDs. Interrupted runs resume from the exact ticket.</li>
+            <li><strong>IndexedDB cursor persistence.</strong> Every 50 conversations, ChatVault records the active <code>starting_after</code> cursor and completed conversation IDs. Resume uses a separate output file. Keep both parts after a clean stop. Restart the date range if the tab closed before the original file was saved.</li>
             <li><strong>Fault-tolerant 404/403 skipping.</strong> Deleted or restricted tickets mid-batch are logged in <code>skipped_errors</code> without halting a multi-hour export.</li>
           </ul>
         </div>
@@ -529,7 +529,7 @@
     <section id="pricing" class="pricing-section">
       <div class="section-head">
         <h2>One-time B2B licensing</h2>
-        <p>Verify compatibility on your own workspace first with the free 50-conversation export and 500-chat sandbox (<a href="/workstation">launch free workstation</a>).</p>
+        <p>Verify compatibility on your own workspace first with the free 50-conversation extension trial and 500-chat web sandbox (<a href="/workstation">launch free workstation</a>).</p>
       </div>
 
       <div class="pricing-grid">
@@ -539,9 +539,9 @@
             <div class="price-tag">$29 <span>/ one-time</span></div>
             <ul class="tier-list">
               <li>Unlimited full-text CSV, NDJSON, and Markdown transcripts (1 workspace)</li>
-              <li>Direct-to-disk <code>FileSystemWritableFileStream</code> (&lt;30 MB RAM)</li>
-              <li>50-chat IndexedDB checkpoint &amp; resume</li>
-              <li>Fast expense-card tier — no recurring subscription</li>
+              <li>Direct-to-disk output on supported browsers</li>
+              <li>Export progress checkpoints</li>
+              <li>One-time purchase</li>
             </ul>
           </div>
           <a href="https://ydwizzle.gumroad.com/l/intercom-exporter" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">Buy Basic license ($29)</a>

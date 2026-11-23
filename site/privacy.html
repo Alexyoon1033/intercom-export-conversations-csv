@@ -62,13 +62,13 @@
     <p>Conversation retrieval, HTML-to-plain-text cleanup, CSV/NDJSON/Markdown serialization, and disk streaming happen inside your local browser:</p>
     <ul>
       <li><strong>Direct API communication.</strong> Your browser sends HTTPS requests directly to official Intercom regional endpoints (<code>https://api.intercom.io/*</code>, <code>https://api.eu.intercom.io/*</code>, <code>https://api.au.intercom.io/*</code>) and Gumroad's license verification endpoint (<code>https://api.gumroad.com/v2/licenses/verify</code>).</li>
-      <li><strong>Zero proxy servers.</strong> Zero bytes of conversation data pass through any intermediary server.</li>
-      <li><strong>Local browser storage.</strong> Export progress checkpoints (pagination cursors and completed conversation IDs) and your license verification timestamp live only in your browser's local <code>IndexedDB</code> and <code>chrome.storage.local</code>. You can clear both with one click inside the workstation.</li>
+      <li><strong>Zero proxy servers.</strong> Conversation data is fetched directly from Intercom. Optional ZIP attachment downloads contact the attachment host.</li>
+      <li><strong>Local browser storage.</strong> Export progress checkpoints (pagination cursors and completed conversation IDs) are stored in <code>IndexedDB</code>. License state, including the key, purchase email, sale ID and verification time, is cached in <code>chrome.storage.local</code> or browser local storage. The workstation provides separate controls to clear progress and the license key.</li>
     </ul>
 
     <h2>2. Chrome extension permissions</h2>
     <ul>
-      <li><code>storage</code>. Caches your Gumroad license verification timestamp locally for 7-day offline access.</li>
+      <li><code>storage</code>. Caches Gumroad license details locally so previously verified licenses can work offline.</li>
       <li><code>host_permissions</code> (<code>api.intercom.io</code>, <code>api.eu.intercom.io</code>, <code>api.au.intercom.io</code>, <code>api.gumroad.com</code>). Allows the dedicated extension tab to query your regional Intercom endpoint and verify Gumroad license keys directly from the browser.</li>
     </ul>
 

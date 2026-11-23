@@ -1,52 +1,21 @@
-# ChatVault Launch Audit & Day 14 (2026-12-07) Operations Checklist
+# ChatVault launch checks
 
-## 1. Automated Healthcheck Command
-Run anytime to verify all 11 live production surfaces (Cloudflare Pages, Sitemap, Google Verification, Gumroad Product + License API, GitHub README, YouTube Demo):
+## Production verification
 
-```powershell
-node c:\YDW\AI\Antigravity\chatvault-intercom-exporter\scripts\healthcheck-prod.mjs
-```
+Run `node --test tests/chatvault.test.mjs` and `node scripts/healthcheck-prod.mjs` from the repository root. Check the public store version separately from submitted builds and Git tags. A synthetic demo and a public endpoint probe each validate a different part of the workflow.
 
----
+For live validation, use an approved workspace and start with a small date range. Compare conversation IDs, messages, notes, and skipped records. Save and verify each segment. Time the run, record browser and API versions, and check representative long conversations and attachments. Test ZIP separately because it buffers output. Ask support only for redacted diagnostics, error codes, and version information.
 
-## 2. User-Only Verification Actions (Requires Owner ID / Biometrics)
+## November 25 follow-up
 
-### A. Gumroad / Stripe Payout Verification (Highest Priority)
-- **URL:** `https://gumroad.com/settings/payments`
-- **Action:** Click **Complete pending verification requirements via Stripe** and submit matching legal name, date of birth, Slovakia address, and government ID (passport or Slovak residence permit).
-- **Post-Submission Verification:** Check `https://gumroad.com/payouts` after 24–72 hours to confirm the banner `"Your payouts are currently paused by Stripe"` disappears.
-- **Note:** Gumroad only pays out once available balance reaches `$100` (no upfront deposit required).
+- [Gumroad payment settings](https://gumroad.com/settings/payments) and [payouts](https://gumroad.com/payouts). Check the Stripe verification status and whether the payout pause has cleared. Approval timing varies after the account owner submits the requested information. The displayed $100 threshold is for available payout balance.
+- [YouTube Studio](https://studio.youtube.com). Check advanced feature eligibility. Once enabled, test the video description links and keep a visible plain domain.
+- [Search Console](https://search.google.com/search-console). Record sitemap status and URL Inspection results for the landing, guide, and workstation. A live test or an accepted request does not prove indexing. If a request hits quota, check again later.
 
-### B. YouTube Channel Advanced Features (Clickable External Links)
-- **URL:** `https://studio.youtube.com` → **Settings → Channel → Feature eligibility → Advanced features**
-- **Action:** Complete Video Verification or Valid ID Verification (or wait for channel history) so the 5 URLs in `https://youtu.be/pGLCiM-GZbg` become clickable blue links.
-- *(Interim mitigation already live: line 1 of the video description now reads `Try the free demo at chatvault-exporter.pages.dev`.)*
+## December 7 checkpoint
 
-### C. Google Search Console Sitemap & Indexing Follow-Up (Check in 24–48h)
-- **URL:** `https://search.google.com/search-console` (`https://chatvault-exporter.pages.dev`)
-- **Action:**
-  1. Open **Sitemaps** and verify `sitemap.xml` transitions from `Couldn't fetch` to `Success` (4 discovered pages).
-  2. Once daily URL inspection quota resets tomorrow, request indexing for:
-     - `https://chatvault-exporter.pages.dev/`
-     - `https://chatvault-exporter.pages.dev/guide-missing-message-text`
-     - `https://chatvault-exporter.pages.dev/workstation`
+Record date range and traffic sources, qualified visits, demo starts, store visits and installs, checkout visits, genuine purchases at the public Basic $29, Pro $79, and Agency $149 prices, verified live exports, refunds, fees, and support time. Identify unavailable counts explicitly. Keep test orders out of sales metrics.
 
----
+Pilot one additional adapter after the payout pause clears, two independent paying customers finish live exports, and contribution is positive after fees, refunds, and support time. Choose Zendesk or Crisp based on customer demand and verify one real workflow. Diagnose discovery when traffic is too low to draw a conclusion. Review the demo-to-checkout path when qualified traffic is present without sales. Keep spend at zero during initial validation.
 
-## 3. Day 14 (2026-12-07) Conservative Go / No-Go Decision Gate
-
-Evaluate on **2026-12-07** using real production metrics (Chrome Web Store Dashboard, Gumroad Sales/Payouts, Search Console, GitHub Insights, YouTube Studio):
-
-- **GO Signal (Expand to 1 Platform First — Zendesk OR Crisp, NOT both at once):**
-  1. Stripe payout pause is **completely resolved**.
-  2. At least **2 independent paying customers** have purchased (`$49` or `$129`) and completed real exports without unresolved refund/support issues.
-  3. Net profit after Gumroad fees, refunds, and support time is positive.
-  - **Next Action on GO:** Clone the 90% shared core engine with `src/adapters/zendesk.js` (`$0` extra store registration fee) and validate Product #2 alone before building Product #3 (`src/adapters/crisp.js`).
-
-- **HOLD / STOP Signal:**
-  - If `<2` independent paying customers by 2026-12-07, spend `€0` on paid ads or extra features. Keep the live organic funnel running passively and record learnings.
-
----
-
-## 4. Tax & Accounting Reserve Rule (Slovakia)
-- From the first Gumroad EUR payout into your Slovak IBAN, set aside **25% of net profit** into a dedicated tax reserve for annual Slovak personal income tax (`Daňové priznanie`). Evaluate `živnosť` registration only if recurring monthly revenue scales consistently.
+Keep sales, fees, refunds, and payout records from the outset for accounting.

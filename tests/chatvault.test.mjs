@@ -68,6 +68,11 @@ test('Suite 1: HTML sanitization, Excel UTF-8 BOM, 32,000-char cell guard, and R
     const trickyCell = 'Hello, "World"\nSecond line with Korean: 한글 테스트';
     const escaped = escapeCsvCell(trickyCell);
     assert.equal(escaped, '"Hello, ""World""\nSecond line with Korean: 한글 테스트"');
+    for (const value of ['=1+1', ' \t+1', '\uFEFF@SUM(A1)', '-1']) {
+      assert.equal(escapeCsvCell(value), "'" + value);
+    }
+    assert.equal(escapeCsvCell(-1), '-1');
+    assert.equal(escapeCsvCell('=' + hugeString).length, EXCEL_SAFE_CELL_LIMIT);
   });
 
   await t.test('conversationToCsvRows (summary & detailed), NDJSON, and Obsidian Markdown serialize accurately', () => {

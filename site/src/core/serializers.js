@@ -101,11 +101,13 @@ export function enforceExcelCellLimit(value, maxChars = EXCEL_SAFE_CELL_LIMIT) {
 
 /**
  * Escapes a single CSV field according to RFC 4180 + Excel 32,000-char protection.
- * Also guards against CSV Formula Injection (=, +, -, @ at start of cell) when sanitizeFormulas is enabled.
+ * Prefixes formula-like text with an apostrophe while preserving numeric cells.
  */
 export function escapeCsvCell(value, { maxChars = EXCEL_SAFE_CELL_LIMIT } = {}) {
   if (value === null || value === undefined) return '';
-  let str = enforceExcelCellLimit(String(value), maxChars);
+  const text = String(value);
+  const formulaLike = typeof value === 'string' && /^[\s\uFEFF]*[=+\-@]/u.test(text);
+  let str = enforceExcelCellLimit(formulaLike ? "'" + text : text, maxChars);
 
   const needsQuotes = /[",\r\n]/.test(str);
   if (needsQuotes) {

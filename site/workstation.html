@@ -60,7 +60,7 @@
         <section class="card">
           <div class="card-header">
             <h2>1. Intercom API v2.11 connection</h2>
-            <button id="toggleTokenGuideBtn" class="btn btn-link" type="button">Read-only token setup (60s)</button>
+            <button id="toggleTokenGuideBtn" class="btn btn-link" type="button">Read-only token setup</button>
           </div>
 
           <div id="tokenGuideBox" class="token-guide-box">
@@ -167,7 +167,7 @@
             </label>
             <label class="checkbox-label" style="margin-top:8px;">
               <input type="checkbox" id="preferDiskStreamToggle" checked>
-              <span><strong>Stream directly to disk (<code>FileSystemWritableFileStream</code>)</strong>. Flushes every 50 conversations so RAM stays under 30 MB on 100,000+ conversations.</span>
+              <span><strong>Stream directly to disk (<code>FileSystemWritableFileStream</code>)</strong>. Writes in 50-conversation batches on supported browsers. ZIP bundles and fallback downloads use memory.</span>
             </label>
           </div>
 

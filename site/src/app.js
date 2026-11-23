@@ -241,13 +241,13 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
       els.statSkippedCount.textContent = String(skippedCount);
       els.streamModePill.textContent = bundleZip
         ? 'Local ZIP Bundle'
-        : (streamMode === 'disk-stream' ? 'Direct-to-Disk Stream (<30MB RAM)' : 'Chunked Blob Stream');
+        : (streamMode === 'disk-stream' ? 'Direct-to-disk stream' : 'In-memory export');
 
       const pct = targetTotal > 0 ? Math.min(100, Math.round((exportedCount / targetTotal) * 100)) : 0;
       els.exportProgressBar.style.width = `${pct}%`;
     },
     onCheckpointSaved: (saved) => {
-      appendLog(`IndexedDB Checkpoint saved (${saved.exportedCount} conversations flushed to disk).`, 'success');
+      appendLog(`IndexedDB Checkpoint saved (${saved.exportedCount} conversations processed).`, 'success');
     }
   });
 

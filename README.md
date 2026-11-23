@@ -7,7 +7,7 @@ Intercom's dashboard CSV export outputs ticket metadata columns (conversation ID
 This repository documents the **Intercom REST API v2.11 N+1 cursor pagination model**, the **10-second rate-limit header protocol**, **sample exports (Excel UTF-8 BOM CSV, Detailed CSV, NDJSON, Obsidian Markdown)** in [`/samples`](./samples), and links to the **100% local browser workstation**.
 
 - **Live Web Workstation & 500-Chat Interactive Sandbox (No Token Required):** https://chatvault-exporter.pages.dev/workstation
-- **Security & Zero-Data GDPR Factsheet (1-Page PDF for InfoSec Sign-Off):** https://chatvault-exporter.pages.dev/security-factsheet
+- **Browser data flow and permissions factsheet:** https://chatvault-exporter.pages.dev/security-factsheet
 - **Full Technical Article:** https://chatvault-exporter.pages.dev/guide-missing-message-text
 - **Chrome Web Store Extension:** https://chromewebstore.google.com/detail/ejjialbdkhkphnlappeoiblihcmpkhmd
 - **Privacy Policy (Zero-Server Architecture):** https://chatvault-exporter.pages.dev/privacy
@@ -17,6 +17,12 @@ This repository documents the **Intercom REST API v2.11 N+1 cursor pagination mo
 [![ChatVault export workstation preview](dist/cws-screenshot-1280x800.png)](https://chatvault-exporter.pages.dev/workstation)
 
 ---
+
+## Before using live data
+
+- The 500-conversation sandbox uses synthetic data. The free extension export of up to 50 conversations checks access and output on your workspace.
+- The browser sends the read-only token directly to Intercom. Gumroad license verification is a separate request. Review the security factsheet and your organization's extension policy before using customer data.
+- This is a file export. For direct help-desk imports, use the destination's importer or a migration service. Review skipped records, CSV truncation markers and the per-conversation part limit before treating an export as complete.
 
 ## 1. Why the List Endpoint Omits Conversation Threads (`N+1` Architecture)
 
@@ -47,7 +53,7 @@ Intercom-Version: 2.11
 - **Header-driven throttling:** Inspect `X-RateLimit-Remaining` on every response. When it drops below `20`, pause until `X-RateLimit-Reset` (UNIX epoch seconds).
 - **HTTP 429 recovery:** Honor `Retry-After` seconds with exponential backoff.
 - **Fault-tolerant 404/403 skipping:** Log deleted (`404`) or restricted (`403`) conversations in `skipped_errors` instead of aborting the batch.
-- **Browser OOM defense:** Concatenating 30,000+ HTML transcripts into a single JS string or Blob hits V8's UTF-16 heap ceiling. ChatVault flushes every 50 conversations directly to disk via `FileSystemWritableFileStream` (`<30 MB` RAM ceiling) and persists the active `starting_after` cursor to `IndexedDB`.
+- **Browser OOM defense:** Native disk streaming writes batches of 50 conversations. Blob downloads and ZIP bundling buffer data in memory. Checkpoints track progress, while resume produces a separate output file. After a crash or tab closure, restart the date range unless you can verify the earlier file was saved.
 - **Excel 32,767-char cell overflow & UTF-8 BOM:** Strip HTML tags (`<p>`, `<br>`, `<a>`, `<li>`), truncate single cells at `32,000` characters, escape per RFC 4180, and prefix UTF-8 BOM (`\uFEFF`) so multi-language text opens cleanly in Microsoft Excel.
 
 ---
@@ -67,4 +73,4 @@ Intercom-Version: 2.11
 node --test tests/chatvault.test.mjs
 ```
 
-All 14 automated tests cover HTML sanitization, UTF-8 BOM, 32,000-character cell guards, US/EU/AU auto-detection, cursor pagination, HTTP 429 backoff, 404/403 skipping, Gumroad 4-fold license verification + 5xx outage grace extension, and IndexedDB checkpoint save/resume integrity.
+The automated suite covers HTML sanitization, UTF-8 BOM, 32,000-character cell guards, US/EU/AU auto-detection, cursor pagination, HTTP 429 backoff, 404/403 skipping, Gumroad 4-fold license verification + 5xx outage grace extension, and IndexedDB checkpoint save/resume integrity.

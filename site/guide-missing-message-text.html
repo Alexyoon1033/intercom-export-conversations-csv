@@ -100,14 +100,14 @@ GET https://api.intercom.io/conversations/{id}?display_as=html</pre>
     <h2>3. Streaming directly to disk in a dedicated browser tab</h2>
     <p>ChatVault runs inside a dedicated browser tab using <code>FileSystemWritableFileStream</code> and 50-conversation <code>IndexedDB</code> checkpoints:</p>
     <ul>
-      <li>Flushes every 50 conversations directly to disk so browser RAM stays under 30 MB across 250,000 conversations.</li>
+      <li>Writes batches of 50 conversations when native disk streaming is active. ZIP and fallback downloads use memory. Restart the date range after an unexpected tab closure if the previous file was not saved.</li>
       <li>Converts HTML into clean plain text and writes Summary CSV (1 row per conversation with a separate internal notes column), Detailed CSV (1 row per message part), NDJSON (<code>.jsonl</code>), or Obsidian Markdown (<code>.md</code>).</li>
-      <li>Zero external servers. Your read-only token and customer transcripts never leave your browser.</li>
+      <li>Live exports send the read-only token directly to Intercom. Transcript processing and file creation happen in your browser.</li>
     </ul>
 
     <div class="callout">
       <strong>Test the 500-conversation sandbox dataset (no API token required)</strong>
-      <p style="margin-top:6px;">Run a 500-conversation multi-turn export to Excel CSV, NDJSON, or Markdown in 3 seconds directly in your browser.</p>
+      <p style="margin-top:6px;">Run a 500-conversation multi-turn export to Excel CSV, NDJSON, or Markdown directly in your browser.</p>
       <a href="/workstation" class="btn">Open workstation &amp; 500-chat sandbox</a>
     </div>
 
