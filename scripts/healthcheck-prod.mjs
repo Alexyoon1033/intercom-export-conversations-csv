@@ -16,9 +16,8 @@ const ENDPOINTS = [
   { name: 'Cloudflare Sitemap', url: 'https://chatvault-exporter.pages.dev/sitemap.xml', mustContain: ['<urlset', 'chatvault-exporter.pages.dev/workstation'] },
   { name: 'Cloudflare Robots', url: 'https://chatvault-exporter.pages.dev/robots.txt', mustContain: ['Sitemap: https://chatvault-exporter.pages.dev/sitemap.xml'] },
   { name: 'Google Verification File', url: 'https://chatvault-exporter.pages.dev/google0bb9cd8d06a09f7a.html', mustContain: ['google-site-verification: google0bb9cd8d06a09f7a.html'] },
-  { name: 'Gumroad Public Product', url: 'https://ydwizzle.gumroad.com/l/intercom-exporter', mustContain: ['Standard License', 'Agency License', '4900', '8000'] },
-  { name: 'GitHub Public Guide', url: 'https://raw.githubusercontent.com/Alexyoon1033/intercom-export-conversations-csv/main/README.md', mustContain: ['pGLCiM-GZbg', 'ejjialbdkhkphnlappeoiblihcmpkhmd', 'ydwizzle.gumroad.com/l/intercom-exporter'] },
-  { name: 'YouTube Demo Video', url: 'https://www.youtube.com/watch?v=pGLCiM-GZbg', mustContain: ['Try the free demo at chatvault-exporter.pages.dev', 'intercom export conversations csv'] }
+  { name: 'Gumroad Public Product', url: 'https://ydwizzle.gumroad.com/l/intercom-exporter', mustContain: ['Basic', 'Pro', 'Agency', '2900'] },
+  { name: 'GitHub Public Guide', url: 'https://raw.githubusercontent.com/Alexyoon1033/intercom-export-conversations-csv/main/README.md', mustContain: ['ejjialbdkhkphnlappeoiblihcmpkhmd', 'ydwizzle.gumroad.com/l/intercom-exporter', 'security-factsheet'], mustNotContain: ['pGLCiM-GZbg'] }
 ];
 
 let failed = 0;

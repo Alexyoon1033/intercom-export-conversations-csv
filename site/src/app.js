@@ -14,7 +14,7 @@ import { FileStreamer } from './core/file-streamer.js';
 import { CheckpointDB } from './core/checkpoint-db.js';
 import { GumroadLicenseManager } from './core/gumroad-license.js';
 import { ExportEngine } from './core/export-engine.js';
-import { LocalZipBuilder } from './core/local-zip.js';
+import { buildExportZipBundle } from './core/zip-packager.js';
 import { htmlToCleanText } from './core/serializers.js';
 
 const checkpointDb = new CheckpointDB();
@@ -273,27 +273,22 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
     }
 
     if (bundleZip && typeof result.getText === 'function') {
-      const zip = new LocalZipBuilder();
-      zip.addFile(suggestedName, result.getText());
-      zip.addFile('skipped_errors.json', JSON.stringify(lastSkippedErrors, null, 2));
-      zip.addFile(
-        'attachments_manifest.json',
-        JSON.stringify(
-          {
-            exportedAt: new Date().toISOString(),
-            exportedCount: result.exportedCount,
-            filters,
-            deepExport,
-            attachments: result.attachmentManifest || []
-          },
-          null,
-          2
-        )
-      );
+      appendLog('Compressing local ZIP bundle with bundled JSZip v3.10.1...', 'info');
+      const zipResult = await buildExportZipBundle({
+        transcriptFileName: suggestedName,
+        transcriptContent: result.getText(),
+        skippedErrors: lastSkippedErrors,
+        attachmentManifest: result.attachmentManifest || [],
+        downloadAttachmentBinaries: deepExport && !isSandbox,
+        metadata: {
+          exportedCount: result.exportedCount,
+          filters,
+          deepExport
+        }
+      });
 
-      const zipBlob = zip.buildBlob();
       const zipName = `${prefix}-${new Date().toISOString().slice(0, 10)}-bundle.zip`;
-      const url = URL.createObjectURL(zipBlob);
+      const url = URL.createObjectURL(zipResult.blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = zipName;
@@ -304,7 +299,7 @@ async function executeExport({ isSandbox = false, resumeSnapshot = null } = {}) 
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }, 2500);
-      appendLog(`Packaged ZIP bundle ${zipName} (${formatBytes(zipBlob.size)}) with transcripts, attachments_manifest.json, and skipped_errors.json.`, 'success');
+      appendLog(`Packaged JSZip bundle ${zipName} (${formatBytes(zipResult.size)}) — ${zipResult.downloadedAttachmentsCount} binaries fetched, ${lastSkippedErrors.length} skipped errors logged.`, 'success');
     }
 
     const dot = els.rateLimitNotice.querySelector('.dot');

@@ -31,7 +31,7 @@ import { CheckpointDB } from '../src/core/checkpoint-db.js';
 import { FileStreamer } from '../src/core/file-streamer.js';
 import { SandboxDemoAdapter } from '../src/core/sandbox-demo.js';
 import { ExportEngine } from '../src/core/export-engine.js';
-import { LocalZipBuilder } from '../src/core/local-zip.js';
+import { buildExportZipBundle } from '../src/core/zip-packager.js';
 
 test('Suite 1: HTML sanitization, Excel UTF-8 BOM, 32,000-char cell guard, and RFC 4180 CSV escaping', async (t) => {
   await t.test('htmlToCleanText converts <p>, <br>, <a>, <li>, and HTML entities cleanly', () => {
@@ -332,7 +332,7 @@ test('Suite 3: Gumroad 4-Fold License Verification + 7-Day Cache + 5xx Outage Gr
       })
     });
 
-    // 1. Valid Standard License
+    // 1. Valid 3-Tier Licenses (Basic $29, Pro $79, Agency $149)
     mockPayload = {
       success: true,
       uses: 1,
@@ -342,12 +342,30 @@ test('Suite 3: Gumroad 4-Fold License Verification + 7-Day Cache + 5xx Outage Gr
         refunded: false,
         disputed: false,
         chargebacked: false,
-        variants: 'Standard'
+        variants: 'Basic',
+        price: 2900
       }
     };
-    const resValid = await manager.verifyLicenseKey('VALID-KEY-123');
+    const resBasic = await manager.verifyLicenseKey('BASIC-KEY-29');
+    assert.equal(resBasic.valid, true);
+    assert.equal(resBasic.tier, 'Basic ($29)');
+
+    mockPayload = {
+      success: true,
+      uses: 1,
+      purchase: {
+        email: 'pro@company.io',
+        sale_id: 'sale_02',
+        refunded: false,
+        disputed: false,
+        chargebacked: false,
+        variants: 'Pro',
+        price: 7900
+      }
+    };
+    const resValid = await manager.verifyLicenseKey('VALID-KEY-79');
     assert.equal(resValid.valid, true);
-    assert.equal(resValid.tier, 'Standard ($49)');
+    assert.equal(resValid.tier, 'Pro ($79)');
 
     // 2. Refunded key -> blocked immediately
     mockPayload = {
@@ -408,7 +426,7 @@ test('Suite 3: Gumroad 4-Fold License Verification + 7-Day Cache + 5xx Outage Gr
     // Initial verification succeeds
     const initial = await manager.verifyLicenseKey('AGENCY-PRO-KEY');
     assert.equal(initial.valid, true);
-    assert.equal(initial.tier, 'Agency ($129)');
+    assert.equal(initial.tier, 'Agency ($149)');
 
     // Advance 8 days (past 7-day cache) and simulate Gumroad HTTP 503 outage
     currentTime += 8 * 24 * 60 * 60 * 1000;
@@ -671,22 +689,27 @@ test('Suite 5: v1.1.0 Upgrades — Search API Filtering, Deep Export Contact Enr
     assert.ok(filtered.every((c) => c.state === 'open' && c.tags.includes('eu-vat')));
   });
 
-  await t.test('LocalZipBuilder produces a valid PKZIP archive (PK\\x03\\x04 header & EOCD)', () => {
-    const zip = new LocalZipBuilder();
-    zip.addFile('transcripts.csv', UTF8_BOM + 'id,body\r\n1,"hello"\r\n');
-    zip.addFile('skipped_errors.json', '[]');
-    const bytes = zip.buildUint8Array();
+  await t.test('buildExportZipBundle packages compressed DEFLATE archive via locally bundled JSZip v3.10.1 including attachment binaries', async () => {
+    const bundle = await buildExportZipBundle({
+      transcriptFileName: 'transcripts.csv',
+      transcriptContent: UTF8_BOM + 'id,body\r\n1,"hello world"\r\n',
+      skippedErrors: [{ id: '404_x', status: 404 }],
+      attachmentManifest: [{ conversationId: '1', partId: 'p1', url: 'https://files.example.com/report.txt' }],
+      downloadAttachmentBinaries: true,
+      fetchFn: async () => ({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => new TextEncoder().encode('attachment-file-bytes').buffer
+      })
+    });
 
-    // Verify PK\x03\x04 local header signature and PK\x05\x06 EOCD signature
-    assert.equal(bytes[0], 0x50);
-    assert.equal(bytes[1], 0x4b);
-    assert.equal(bytes[2], 0x03);
-    assert.equal(bytes[3], 0x04);
-    assert.ok(bytes.length > 100);
-    const eocdOffset = bytes.length - 22;
-    assert.equal(bytes[eocdOffset], 0x50);
-    assert.equal(bytes[eocdOffset + 1], 0x4b);
-    assert.equal(bytes[eocdOffset + 2], 0x05);
-    assert.equal(bytes[eocdOffset + 3], 0x06);
+    // Verify PK\x03\x04 ZIP header & attachment downloaded count
+    assert.equal(bundle.uint8[0], 0x50);
+    assert.equal(bundle.uint8[1], 0x4b);
+    assert.equal(bundle.uint8[2], 0x03);
+    assert.equal(bundle.uint8[3], 0x04);
+    assert.equal(bundle.downloadedAttachmentsCount, 1);
+    assert.equal(bundle.failedAttachmentsCount, 0);
+    assert.ok(bundle.size > 100);
   });
 });

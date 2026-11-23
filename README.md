@@ -11,8 +11,7 @@ This repository documents the **Intercom REST API v2.11 N+1 cursor pagination mo
 - **Full Technical Article:** https://chatvault-exporter.pages.dev/guide-missing-message-text
 - **Chrome Web Store Extension:** https://chromewebstore.google.com/detail/ejjialbdkhkphnlappeoiblihcmpkhmd
 - **Privacy Policy (Zero-Server Architecture):** https://chatvault-exporter.pages.dev/privacy
-- **One-minute sandbox walkthrough:** https://youtu.be/pGLCiM-GZbg
-- **ChatVault Pro:** [Standard and Agency licenses on Gumroad](https://ydwizzle.gumroad.com/l/intercom-exporter)
+- **B2B One-Time Licensing ($29 Basic / $79 Pro / $149 Agency):** https://ydwizzle.gumroad.com/l/intercom-exporter
 
 
 [![ChatVault export workstation preview](dist/cws-screenshot-1280x800.png)](https://chatvault-exporter.pages.dev/workstation)

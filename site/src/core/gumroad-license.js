@@ -99,7 +99,15 @@ export class GumroadLicenseManager {
     }
 
     const variants = String(p.variants || p.variant_name || '').toLowerCase();
-    const tier = variants.includes('agency') || (Number(p.price) >= 10000) ? 'Agency ($129)' : 'Standard ($49)';
+    const priceCents = Number(p.price || 0);
+    let tier = 'Basic ($29)';
+    if (variants.includes('agency') || priceCents >= 12000) {
+      tier = 'Agency ($149)';
+    } else if (variants.includes('pro') || variants.includes('standard') || priceCents >= 4500) {
+      tier = 'Pro ($79)';
+    } else if (variants.includes('basic') || priceCents >= 2000) {
+      tier = 'Basic ($29)';
+    }
 
     return {
       valid: true,

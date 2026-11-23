@@ -1,0 +1,5 @@
+file 'c:/YDW/AI/Antigravity/chatvault-intercom-exporter/dist/youtube-demo/scene1_hero.mp4'
+file 'c:/YDW/AI/Antigravity/chatvault-intercom-exporter/dist/youtube-demo/scene2_workstation_ready.mp4'
+file 'c:/YDW/AI/Antigravity/chatvault-intercom-exporter/dist/youtube-demo/scene3_workstation_running.mp4'
+file 'c:/YDW/AI/Antigravity/chatvault-intercom-exporter/dist/youtube-demo/scene4_transcript_ledger.mp4'
+file 'c:/YDW/AI/Antigravity/chatvault-intercom-exporter/dist/youtube-demo/scene5_token_and_cta.mp4'
