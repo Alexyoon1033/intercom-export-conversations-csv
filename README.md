@@ -4,12 +4,17 @@
 
 Intercom's dashboard CSV export outputs ticket metadata columns (conversation ID, timestamps, assignee, tag names, SLA timers) without customer messages, agent replies, or internal teammate notes.
 
-This repository documents the **Intercom REST API v2.11 N+1 cursor pagination model**, the **10-second rate-limit header protocol**, real **sample exports (Excel UTF-8 BOM CSV, Detailed CSV, NDJSON, Obsidian Markdown)** in [`/samples`](./samples), and links to the **100% local browser workstation**.
+This repository documents the **Intercom REST API v2.11 N+1 cursor pagination model**, the **10-second rate-limit header protocol**, **sample exports (Excel UTF-8 BOM CSV, Detailed CSV, NDJSON, Obsidian Markdown)** in [`/samples`](./samples), and links to the **100% local browser workstation**.
 
 - **Live Web Workstation & 500-Chat Interactive Sandbox (No Token Required):** https://chatvault-exporter.pages.dev/workstation
 - **Full Technical Article:** https://chatvault-exporter.pages.dev/guide-missing-message-text
 - **Chrome Web Store Extension:** https://chromewebstore.google.com/detail/ejjialbdkhkphnlappeoiblihcmpkhmd
 - **Privacy Policy (Zero-Server Architecture):** https://chatvault-exporter.pages.dev/privacy
+- **One-minute sandbox walkthrough:** https://youtu.be/pGLCiM-GZbg
+- **ChatVault Pro:** [Standard and Agency licenses on Gumroad](https://ydwizzle.gumroad.com/l/intercom-exporter)
+
+
+[![ChatVault export workstation preview](dist/cws-screenshot-1280x800.png)](https://chatvault-exporter.pages.dev/workstation)
 
 ---
 
